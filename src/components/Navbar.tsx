@@ -4,12 +4,17 @@ import { Menu, X, MoonStar, Sun, ChevronUp, Search, PlusCircle, Bell } from 'luc
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { Currency } from '@/lib/data';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dispatch, SetStateAction } from 'react';
 
 interface NavbarProps {
   onAddExpense?: () => void;
+  displayCurrency?: Currency;
+  onCurrencyChange?: Dispatch<SetStateAction<Currency>>;
 }
 
-export function Navbar({ onAddExpense }: NavbarProps) {
+export function Navbar({ onAddExpense, displayCurrency = "THB", onCurrencyChange }: NavbarProps) {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -26,6 +31,12 @@ export function Navbar({ onAddExpense }: NavbarProps) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
+    }
+  };
+
+  const handleCurrencyChange = (value: string) => {
+    if (onCurrencyChange && (value === "THB" || value === "USD" || value === "EUR")) {
+      onCurrencyChange(value as Currency);
     }
   };
   
@@ -65,6 +76,20 @@ export function Navbar({ onAddExpense }: NavbarProps) {
         </nav>
         
         <div className="flex items-center gap-2">
+          {/* Currency Selector */}
+          {onCurrencyChange && (
+            <Select value={displayCurrency} onValueChange={handleCurrencyChange}>
+              <SelectTrigger className="w-[80px]">
+                <SelectValue placeholder="THB" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="THB">THB</SelectItem>
+                <SelectItem value="USD">USD</SelectItem>
+                <SelectItem value="EUR">EUR</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+
           <Button variant="ghost" size="icon" onClick={toggleDarkMode} className="hidden md:inline-flex">
             {darkMode ? <Sun className="h-5 w-5" /> : <MoonStar className="h-5 w-5" />}
           </Button>
