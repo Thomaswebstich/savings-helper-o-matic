@@ -82,7 +82,7 @@ export function ExpenseForm({ open, onClose, onSubmit }: ExpenseFormProps) {
   
   // Handle form submission
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    onSubmit(values);
+    onSubmit(values as ExpenseFormValues); // Use type assertion to ensure all required fields are present
     form.reset();
     onClose();
   };

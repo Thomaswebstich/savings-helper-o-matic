@@ -8,7 +8,7 @@ import { SavingsProjection } from '@/components/SavingsProjection';
 import { Expense, generateMockExpenses, calculateMonthlyTotals, calculateCategoryTotals, formatCurrency } from '@/lib/data';
 import { ExpenseForm, ExpenseFormValues } from '@/components/ExpenseForm';
 import { Banknote, Calendar, Coins, CreditCard, ReceiptText, TrendingDown, TrendingUp } from 'lucide-react';
-import { toast } from '@/components/ui/sonner';
+import { toast } from '@/hooks/use-toast';
 
 export default function Index() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -56,7 +56,7 @@ export default function Index() {
     
     const change = ((currentMonth.expenses - previousMonth.expenses) / previousMonth.expenses) * 100;
     return {
-      value: Math.abs(change).toFixed(1),
+      value: Math.abs(change),
       isPositive: change < 0 // Lower expenses is positive trend
     };
   }, [monthlyData]);
@@ -72,7 +72,7 @@ export default function Index() {
     
     const change = ((currentMonth.savings - previousMonth.savings) / previousMonth.savings) * 100;
     return {
-      value: Math.abs(change).toFixed(1),
+      value: Math.abs(change),
       isPositive: change > 0
     };
   }, [monthlyData]);
