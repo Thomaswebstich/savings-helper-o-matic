@@ -90,7 +90,10 @@ export default function Index() {
     };
     
     setExpenses(prev => [newExpense, ...prev]);
-    toast.success("Expense added successfully");
+    toast({
+      title: "Success",
+      description: "Expense added successfully",
+    });
   };
   
   return (
@@ -118,7 +121,7 @@ export default function Index() {
                 title="Total Expenses"
                 value={formatCurrency(totalExpenses)}
                 icon={<ReceiptText className="h-5 w-5" />}
-                trend={expenseChange.value !== "0" ? expenseChange : undefined}
+                trend={expenseChange.value !== 0 ? expenseChange : undefined}
               />
               <DataCard
                 title="Monthly Income"
@@ -135,7 +138,7 @@ export default function Index() {
                 title="Monthly Savings"
                 value={currentMonthData ? formatCurrency(currentMonthData.savings) : "$0.00"}
                 icon={<Coins className="h-5 w-5" />}
-                trend={savingsChange.value !== "0" ? savingsChange : undefined}
+                trend={savingsChange.value !== 0 ? savingsChange : undefined}
               />
             </div>
             
