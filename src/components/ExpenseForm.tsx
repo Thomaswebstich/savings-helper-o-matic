@@ -1,9 +1,9 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Category, CATEGORIES } from '@/lib/data';
+import { Category, CATEGORIES, Expense } from '@/lib/data';
 import { 
   Dialog, 
   DialogContent, 
@@ -42,6 +42,7 @@ interface ExpenseFormProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: ExpenseFormValues) => void;
+  initialValues?: Expense | null;
 }
 
 export interface ExpenseFormValues {
@@ -67,7 +68,7 @@ const formSchema = z.object({
   recurrenceInterval: z.enum(["daily", "weekly", "monthly", "yearly"]).optional(),
 });
 
-export function ExpenseForm({ open, onClose, onSubmit }: ExpenseFormProps) {
+export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseFormProps) {
   // Define our form with react-hook-form and zod
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -80,20 +81,49 @@ export function ExpenseForm({ open, onClose, onSubmit }: ExpenseFormProps) {
     },
   });
   
+  // Update form values when initialValues changes
+  useEffect(() => {
+    if (initialValues) {
+      form.reset({
+        description: initialValues.description,
+        amount: initialValues.amount,
+        date: initialValues.date,
+        category: initialValues.category,
+        isRecurring: initialValues.isRecurring,
+        recurrenceInterval: initialValues.recurrenceInterval,
+      });
+    } else {
+      form.reset({
+        description: "",
+        amount: 0,
+        date: new Date(),
+        category: "Other",
+        isRecurring: false,
+      });
+    }
+  }, [initialValues, form]);
+  
   // Handle form submission
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     onSubmit(values as ExpenseFormValues); // Use type assertion to ensure all required fields are present
     form.reset();
     onClose();
   };
+
+  // Determine dialog title based on whether we're editing or adding
+  const dialogTitle = initialValues ? "Edit expense" : "Add new expense";
+  const dialogDescription = initialValues 
+    ? "Update the details of your expense." 
+    : "Add a new expense to your tracker.";
+  const submitButtonText = initialValues ? "Update Expense" : "Add Expense";
   
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md animate-scale-in">
         <DialogHeader>
-          <DialogTitle>Add new expense</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
-            Add a new expense to your tracker.
+            {dialogDescription}
           </DialogDescription>
         </DialogHeader>
         
@@ -182,7 +212,7 @@ export function ExpenseForm({ open, onClose, onSubmit }: ExpenseFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a category" />
@@ -231,7 +261,7 @@ export function ExpenseForm({ open, onClose, onSubmit }: ExpenseFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Recurrence</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select interval" />
@@ -255,7 +285,7 @@ export function ExpenseForm({ open, onClose, onSubmit }: ExpenseFormProps) {
                 <X className="mr-2 h-4 w-4" /> Cancel
               </Button>
               <Button type="submit">
-                <Check className="mr-2 h-4 w-4" /> Add Expense
+                <Check className="mr-2 h-4 w-4" /> {submitButtonText}
               </Button>
             </DialogFooter>
           </form>

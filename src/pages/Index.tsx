@@ -14,6 +14,7 @@ export default function Index() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [currentExpense, setCurrentExpense] = useState<Expense | null>(null);
   
   // Load mock data on component mount
   useEffect(() => {
@@ -96,9 +97,55 @@ export default function Index() {
     });
   };
   
+  // Handle editing an expense
+  const handleEditExpense = (expense: Expense) => {
+    setCurrentExpense(expense);
+    setIsFormOpen(true);
+  };
+  
+  // Handle form submission for both add and edit
+  const handleFormSubmit = (data: ExpenseFormValues) => {
+    if (currentExpense) {
+      // Update existing expense
+      setExpenses(prev => 
+        prev.map(exp => 
+          exp.id === currentExpense.id 
+            ? { ...exp, ...data } 
+            : exp
+        )
+      );
+      toast({
+        title: "Success",
+        description: "Expense updated successfully",
+      });
+      setCurrentExpense(null);
+    } else {
+      // Add new expense
+      handleAddExpense(data);
+    }
+  };
+  
+  // Handle deleting an expense
+  const handleDeleteExpense = (id: string) => {
+    setExpenses(prev => prev.filter(exp => exp.id !== id));
+    toast({
+      title: "Success",
+      description: "Expense deleted successfully",
+    });
+  };
+  
+  // Close form and reset current expense
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setCurrentExpense(null);
+  };
+  
   return (
     <div className="min-h-screen bg-background page-transition">
-      <Navbar onAddExpense={() => setIsFormOpen(true)} />
+      <Navbar onAddExpense={() => {
+        setCurrentExpense(null);
+        setIsFormOpen(true);
+      }} />
       
       <main className="container mx-auto px-4 py-6">
         <div className="mb-8">
@@ -166,18 +213,24 @@ export default function Index() {
               </div>
               <ExpenseTable 
                 expenses={expenses} 
-                onAddExpense={() => setIsFormOpen(true)}
+                onAddExpense={() => {
+                  setCurrentExpense(null);
+                  setIsFormOpen(true);
+                }}
+                onEditExpense={handleEditExpense}
+                onDeleteExpense={handleDeleteExpense}
               />
             </div>
           </>
         )}
       </main>
       
-      {/* Add Expense Form */}
+      {/* Add/Edit Expense Form */}
       <ExpenseForm 
         open={isFormOpen} 
-        onClose={() => setIsFormOpen(false)} 
-        onSubmit={handleAddExpense}
+        onClose={handleCloseForm} 
+        onSubmit={handleFormSubmit}
+        initialValues={currentExpense}
       />
     </div>
   );

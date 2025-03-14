@@ -5,7 +5,7 @@ import { CategoryBadge } from './CategoryBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
-import { Calendar, Filter, SortDesc, SortAsc, Plus, CheckSquare, X, Search } from 'lucide-react';
+import { Calendar, Filter, SortDesc, SortAsc, Plus, CheckSquare, X, Search, Trash2, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,13 +13,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 interface ExpenseTableProps {
   expenses: Expense[];
   onAddExpense?: () => void;
+  onEditExpense?: (expense: Expense) => void;
+  onDeleteExpense?: (id: string) => void;
 }
 
-export function ExpenseTable({ expenses, onAddExpense }: ExpenseTableProps) {
+export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteExpense }: ExpenseTableProps) {
   const [search, setSearch] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Expense; direction: 'asc' | 'desc' }>({ 
@@ -205,12 +213,15 @@ export function ExpenseTable({ expenses, onAddExpense }: ExpenseTableProps) {
                   <CheckSquare className="w-4 h-4" />
                 </div>
               </th>
+              <th className="font-medium text-right w-20">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {sortedExpenses.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                <td colSpan={6} className="text-center py-8 text-muted-foreground">
                   {search || selectedCategories.length 
                     ? "No expenses match your filters" 
                     : "No expenses yet"}
@@ -218,23 +229,76 @@ export function ExpenseTable({ expenses, onAddExpense }: ExpenseTableProps) {
               </tr>
             ) : (
               sortedExpenses.map(expense => (
-                <tr key={expense.id} className="notion-db-row group">
-                  <td className="font-medium">{expense.description}</td>
-                  <td className="text-muted-foreground">{formatCurrency(expense.amount)}</td>
-                  <td className="text-muted-foreground">
-                    {format(expense.date, 'MMM d, yyyy')}
-                  </td>
-                  <td>
-                    <CategoryBadge category={expense.category} />
-                  </td>
-                  <td>
-                    {expense.isRecurring && (
-                      <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                        ↻
-                      </span>
+                <ContextMenu key={expense.id}>
+                  <ContextMenuTrigger asChild>
+                    <tr className="notion-db-row group">
+                      <td className="font-medium">{expense.description}</td>
+                      <td className="text-muted-foreground">{formatCurrency(expense.amount)}</td>
+                      <td className="text-muted-foreground">
+                        {format(expense.date, 'MMM d, yyyy')}
+                      </td>
+                      <td>
+                        <CategoryBadge category={expense.category} />
+                      </td>
+                      <td>
+                        {expense.isRecurring && (
+                          <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                            ↻
+                          </span>
+                        )}
+                      </td>
+                      <td className="text-right">
+                        <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {onEditExpense && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditExpense(expense);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                          )}
+                          {onDeleteExpense && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-destructive" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteExpense(expense.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    {onEditExpense && (
+                      <ContextMenuItem onClick={() => onEditExpense(expense)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit expense
+                      </ContextMenuItem>
                     )}
-                  </td>
-                </tr>
+                    {onDeleteExpense && (
+                      <ContextMenuItem 
+                        onClick={() => onDeleteExpense(expense.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete expense
+                      </ContextMenuItem>
+                    )}
+                  </ContextMenuContent>
+                </ContextMenu>
               ))
             )}
           </tbody>
