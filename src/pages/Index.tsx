@@ -5,6 +5,7 @@ import { DataCard } from '@/components/DataCard';
 import { ExpenseTable } from '@/components/ExpenseTable';
 import { FinancialCharts } from '@/components/FinancialCharts';
 import { SavingsProjection } from '@/components/SavingsProjection';
+import { ExpenseAnalysis } from '@/components/ExpenseAnalysis';
 import { IncomeEditor } from '@/components/IncomeEditor';
 import { 
   Expense, 
@@ -251,8 +252,20 @@ export default function Index() {
                 />
               </div>
               <div className="lg:col-span-1">
-                <SavingsProjection monthlyData={monthlyData} />
+                <SavingsProjection 
+                  monthlyData={monthlyData} 
+                  currency={displayCurrency}
+                />
               </div>
+            </div>
+            
+            {/* Expense Analysis - New component */}
+            <div className="mb-8">
+              <ExpenseAnalysis 
+                expenses={expenses}
+                categoryData={categoryData}
+                currency={displayCurrency}
+              />
             </div>
             
             {/* Expenses Table */}
