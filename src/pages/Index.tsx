@@ -1,11 +1,18 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
 import { ExpenseTable } from '@/components/ExpenseTable';
 import { FinancialCharts } from '@/components/FinancialCharts';
 import { SavingsProjection } from '@/components/SavingsProjection';
-import { Expense, generateMockExpenses, calculateMonthlyTotals, calculateCategoryTotals, formatCurrency } from '@/lib/data';
+import { 
+  Expense, 
+  generateMockExpenses, 
+  calculateMonthlyTotals, 
+  calculateCategoryTotals, 
+  formatCurrency,
+  Currency,
+  convertCurrency
+} from '@/lib/data';
 import { ExpenseForm, ExpenseFormValues } from '@/components/ExpenseForm';
 import { Banknote, Calendar, Coins, CreditCard, ReceiptText, TrendingDown, TrendingUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -15,6 +22,7 @@ export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentExpense, setCurrentExpense] = useState<Expense | null>(null);
+  const [displayCurrency, setDisplayCurrency] = useState<Currency>("THB");
   
   // Load mock data on component mount
   useEffect(() => {
@@ -43,8 +51,18 @@ export default function Index() {
   // Calculate current month totals
   const currentMonthData = useMemo(() => {
     if (monthlyData.length === 0) return null;
-    return monthlyData[monthlyData.length - 4]; // Get the most recent actual month (not projected)
-  }, [monthlyData]);
+    
+    const data = monthlyData[monthlyData.length - 4]; // Get the most recent actual month
+    if (!data) return null;
+    
+    // Convert totals to display currency
+    return {
+      month: data.month,
+      income: convertCurrency(data.income, "THB", displayCurrency),
+      expenses: convertCurrency(data.expenses, "THB", displayCurrency),
+      savings: convertCurrency(data.savings, "THB", displayCurrency)
+    };
+  }, [monthlyData, displayCurrency]);
   
   // Calculate month-over-month change for expenses
   const expenseChange = useMemo(() => {
@@ -80,8 +98,13 @@ export default function Index() {
   
   // Calculate total expenses
   const totalExpenses = useMemo(() => {
-    return expenses.reduce((total, expense) => total + expense.amount, 0);
-  }, [expenses]);
+    const totalInTHB = expenses.reduce((total, expense) => {
+      const amountInTHB = convertCurrency(expense.amount, expense.currency, "THB");
+      return total + amountInTHB;
+    }, 0);
+    
+    return convertCurrency(totalInTHB, "THB", displayCurrency);
+  }, [expenses, displayCurrency]);
   
   // Handle adding a new expense
   const handleAddExpense = (data: ExpenseFormValues) => {
@@ -142,10 +165,14 @@ export default function Index() {
   
   return (
     <div className="min-h-screen bg-background page-transition">
-      <Navbar onAddExpense={() => {
-        setCurrentExpense(null);
-        setIsFormOpen(true);
-      }} />
+      <Navbar 
+        onAddExpense={() => {
+          setCurrentExpense(null);
+          setIsFormOpen(true);
+        }}
+        displayCurrency={displayCurrency}
+        onCurrencyChange={setDisplayCurrency}
+      />
       
       <main className="container mx-auto px-4 py-6">
         <div className="mb-8">
@@ -166,24 +193,24 @@ export default function Index() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <DataCard
                 title="Total Expenses"
-                value={formatCurrency(totalExpenses)}
+                value={formatCurrency(totalExpenses, displayCurrency)}
                 icon={<ReceiptText className="h-5 w-5" />}
                 trend={expenseChange.value !== 0 ? expenseChange : undefined}
               />
               <DataCard
                 title="Monthly Income"
-                value={currentMonthData ? formatCurrency(currentMonthData.income) : "$0.00"}
+                value={currentMonthData ? formatCurrency(currentMonthData.income, displayCurrency) : "0"}
                 icon={<Banknote className="h-5 w-5" />}
               />
               <DataCard
                 title="Monthly Expenses"
-                value={currentMonthData ? formatCurrency(currentMonthData.expenses) : "$0.00"}
+                value={currentMonthData ? formatCurrency(currentMonthData.expenses, displayCurrency) : "0"}
                 icon={<CreditCard className="h-5 w-5" />}
                 description="Current month spending"
               />
               <DataCard
                 title="Monthly Savings"
-                value={currentMonthData ? formatCurrency(currentMonthData.savings) : "$0.00"}
+                value={currentMonthData ? formatCurrency(currentMonthData.savings, displayCurrency) : "0"}
                 icon={<Coins className="h-5 w-5" />}
                 trend={savingsChange.value !== 0 ? savingsChange : undefined}
               />

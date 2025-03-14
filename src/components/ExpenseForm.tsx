@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Category, CATEGORIES, Expense } from '@/lib/data';
+import { Category, CATEGORIES, Currency, Expense, CURRENCY_SYMBOLS } from '@/lib/data';
 import { 
   Dialog, 
   DialogContent, 
@@ -31,8 +31,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { CalendarIcon, Check, X } from 'lucide-react';
+import { format, isValid } from 'date-fns';
+import { CalendarClock, CalendarIcon, Check, Euro, DollarSign, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
@@ -52,6 +52,8 @@ export interface ExpenseFormValues {
   category: Category;
   isRecurring: boolean;
   recurrenceInterval?: "daily" | "weekly" | "monthly" | "yearly";
+  stopDate?: Date | null;
+  currency: Currency;
 }
 
 // Define our form schema with Zod
@@ -66,6 +68,8 @@ const formSchema = z.object({
   category: z.enum(CATEGORIES as [Category, ...Category[]]),
   isRecurring: z.boolean().default(false),
   recurrenceInterval: z.enum(["daily", "weekly", "monthly", "yearly"]).optional(),
+  stopDate: z.date().nullable().optional(),
+  currency: z.enum(["THB", "USD", "EUR"] as [Currency, ...Currency[]]),
 });
 
 export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseFormProps) {
@@ -78,6 +82,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
       date: new Date(),
       category: "Other",
       isRecurring: false,
+      currency: "THB",
     },
   });
   
@@ -91,6 +96,8 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
         category: initialValues.category,
         isRecurring: initialValues.isRecurring,
         recurrenceInterval: initialValues.recurrenceInterval,
+        stopDate: initialValues.stopDate || null,
+        currency: initialValues.currency || "THB",
       });
     } else {
       form.reset({
@@ -99,15 +106,21 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
         date: new Date(),
         category: "Other",
         isRecurring: false,
+        currency: "THB",
       });
     }
   }, [initialValues, form]);
   
   // Handle form submission
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    onSubmit(values as ExpenseFormValues); // Use type assertion to ensure all required fields are present
+    onSubmit(values as ExpenseFormValues);
     form.reset();
     onClose();
+  };
+
+  // Determine currency symbol based on selected currency
+  const getCurrencySymbol = (currency: Currency) => {
+    return CURRENCY_SYMBOLS[currency] || "฿";
   };
 
   // Determine dialog title based on whether we're editing or adding
@@ -143,28 +156,70 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                      <Input 
-                        type="number" 
-                        placeholder="0.00" 
-                        step="0.01" 
-                        className="pl-8" 
-                        {...field}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-muted-foreground">
+                          {getCurrencySymbol(form.watch("currency"))}
+                        </span>
+                        <Input 
+                          type="number" 
+                          placeholder="0.00" 
+                          step="0.01" 
+                          className="pl-8" 
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Currency</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="THB">
+                          <div className="flex items-center">
+                            <span className="mr-2">฿</span>
+                            <span>Thai Baht (THB)</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="USD">
+                          <div className="flex items-center">
+                            <DollarSign className="h-4 w-4 mr-2" />
+                            <span>US Dollar (USD)</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="EUR">
+                          <div className="flex items-center">
+                            <Euro className="h-4 w-4 mr-2" />
+                            <span>Euro (EUR)</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             
             <FormField
               control={form.control}
@@ -255,29 +310,84 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
             />
             
             {form.watch("isRecurring") && (
-              <FormField
-                control={form.control}
-                name="recurrenceInterval"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Recurrence</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select interval" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="yearly">Yearly</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="recurrenceInterval"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Recurrence</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select interval" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="yearly">Yearly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="stopDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Stop Date (Optional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value && isValid(field.value) ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>No end date</span>
+                              )}
+                              <CalendarClock className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <div className="p-2 flex justify-between border-b">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => field.onChange(null)}
+                            >
+                              Clear
+                            </Button>
+                          </div>
+                          <Calendar
+                            mode="single"
+                            selected={field.value || undefined}
+                            onSelect={field.onChange}
+                            initialFocus
+                            fromDate={new Date()} // Only future dates
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>
+                        When this recurring expense should stop.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             )}
             
             <DialogFooter className="pt-4">
