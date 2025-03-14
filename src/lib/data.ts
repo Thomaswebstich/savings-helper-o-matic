@@ -1,4 +1,3 @@
-
 import { addDays, format, subDays, subMonths } from "date-fns";
 
 export type Currency = "THB" | "USD" | "EUR";
@@ -92,8 +91,96 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   Other: "bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-300"
 };
 
-// Simulated income level - in a real app, this would be user-defined
-export const MONTHLY_INCOME = 5000;
+// Default monthly income - now no longer a constant
+export let MONTHLY_INCOME = 5000;
+
+// Calculate monthly totals with custom income and time range
+export const calculateMonthlyTotals = (
+  expenses: Expense[], 
+  monthlyIncome = MONTHLY_INCOME,
+  monthsBack = 6, 
+  monthsForward = 3
+): MonthlyTotal[] => {
+  const result: MonthlyTotal[] = [];
+  const currentDate = new Date();
+  
+  // Calculate historical months
+  for (let i = monthsBack; i >= 0; i--) {
+    const currentMonth = subMonths(currentDate, i);
+    const monthStr = format(currentMonth, "MMM yyyy");
+    
+    // Filter expenses for this month
+    const monthExpenses = expenses.filter(exp => {
+      const expDate = new Date(exp.date);
+      return expDate.getMonth() === currentMonth.getMonth() && 
+             expDate.getFullYear() === currentMonth.getFullYear();
+    });
+    
+    // Calculate total expenses for the month (convert all to THB for consistency)
+    const totalExpenses = monthExpenses.reduce((sum, exp) => {
+      const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
+      return sum + amountInTHB;
+    }, 0);
+    
+    // Calculate savings (income - expenses)
+    const savings = monthlyIncome - totalExpenses;
+    
+    result.push({
+      month: monthStr,
+      income: monthlyIncome,
+      expenses: totalExpenses,
+      savings: savings
+    });
+  }
+  
+  // Calculate projected future months
+  for (let i = 1; i <= monthsForward; i++) {
+    const futureMonth = addDays(currentDate, i * 30); // Approximation
+    const monthStr = format(futureMonth, "MMM yyyy");
+    
+    // Get recurring expenses that don't have a stop date or have a stop date in the future
+    const recurringExpenses = expenses.filter(exp => 
+      exp.isRecurring && 
+      (!exp.stopDate || exp.stopDate >= futureMonth)
+    );
+    
+    // Estimate monthly expenses based on recurring expenses and average of non-recurring
+    const monthlyRecurringTotal = recurringExpenses
+      .filter(exp => exp.recurrenceInterval === "monthly")
+      .reduce((sum, exp) => {
+        const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
+        return sum + amountInTHB;
+      }, 0);
+    
+    // Calculate average of weekly expenses and multiply by weeks in a month
+    const weeklyRecurringExpenses = recurringExpenses
+      .filter(exp => exp.recurrenceInterval === "weekly");
+    const monthlyFromWeekly = weeklyRecurringExpenses.reduce((sum, exp) => {
+      const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
+      return sum + amountInTHB;
+    }, 0) * 4;
+    
+    // Calculate average non-recurring expenses from past few months
+    const pastMonths = result.slice(-3);
+    const totalPastExpenses = pastMonths.reduce((sum, month) => sum + month.expenses, 0);
+    const averageNonRecurring = (totalPastExpenses / pastMonths.length) - (monthlyRecurringTotal + monthlyFromWeekly);
+    
+    // Calculate total projected expenses
+    const projectedExpenses = monthlyRecurringTotal + monthlyFromWeekly + averageNonRecurring;
+    
+    // Calculate projected savings
+    const projectedSavings = monthlyIncome - projectedExpenses;
+    
+    result.push({
+      month: monthStr,
+      income: monthlyIncome,
+      expenses: projectedExpenses,
+      savings: projectedSavings
+    });
+  }
+  
+  return result;
+};
 
 // Generate mock expense data for demonstration
 export const generateMockExpenses = (count = 50): Expense[] => {
@@ -238,89 +325,6 @@ export const convertCurrency = (amount: number, fromCurrency: Currency, toCurren
   
   // Then convert from THB to target currency
   return toCurrency === "THB" ? amountInTHB : amountInTHB * EXCHANGE_RATES[toCurrency];
-};
-
-// Calculate monthly totals for the past 6 months and projected future 3 months
-export const calculateMonthlyTotals = (expenses: Expense[], monthsBack = 6, monthsForward = 3): MonthlyTotal[] => {
-  const result: MonthlyTotal[] = [];
-  const currentDate = new Date();
-  
-  // Calculate historical months
-  for (let i = monthsBack; i >= 0; i--) {
-    const currentMonth = subMonths(currentDate, i);
-    const monthStr = format(currentMonth, "MMM yyyy");
-    
-    // Filter expenses for this month
-    const monthExpenses = expenses.filter(exp => {
-      const expDate = new Date(exp.date);
-      return expDate.getMonth() === currentMonth.getMonth() && 
-             expDate.getFullYear() === currentMonth.getFullYear();
-    });
-    
-    // Calculate total expenses for the month (convert all to THB for consistency)
-    const totalExpenses = monthExpenses.reduce((sum, exp) => {
-      const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
-      return sum + amountInTHB;
-    }, 0);
-    
-    // Calculate savings (income - expenses)
-    const savings = MONTHLY_INCOME - totalExpenses;
-    
-    result.push({
-      month: monthStr,
-      income: MONTHLY_INCOME,
-      expenses: totalExpenses,
-      savings: savings
-    });
-  }
-  
-  // Calculate projected future months
-  for (let i = 1; i <= monthsForward; i++) {
-    const futureMonth = addDays(currentDate, i * 30); // Approximation
-    const monthStr = format(futureMonth, "MMM yyyy");
-    
-    // Get recurring expenses that don't have a stop date or have a stop date in the future
-    const recurringExpenses = expenses.filter(exp => 
-      exp.isRecurring && 
-      (!exp.stopDate || exp.stopDate >= futureMonth)
-    );
-    
-    // Estimate monthly expenses based on recurring expenses and average of non-recurring
-    const monthlyRecurringTotal = recurringExpenses
-      .filter(exp => exp.recurrenceInterval === "monthly")
-      .reduce((sum, exp) => {
-        const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
-        return sum + amountInTHB;
-      }, 0);
-    
-    // Calculate average of weekly expenses and multiply by weeks in a month
-    const weeklyRecurringExpenses = recurringExpenses
-      .filter(exp => exp.recurrenceInterval === "weekly");
-    const monthlyFromWeekly = weeklyRecurringExpenses.reduce((sum, exp) => {
-      const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
-      return sum + amountInTHB;
-    }, 0) * 4;
-    
-    // Calculate average non-recurring expenses from past few months
-    const pastMonths = result.slice(-3);
-    const totalPastExpenses = pastMonths.reduce((sum, month) => sum + month.expenses, 0);
-    const averageNonRecurring = (totalPastExpenses / pastMonths.length) - (monthlyRecurringTotal + monthlyFromWeekly);
-    
-    // Calculate total projected expenses
-    const projectedExpenses = monthlyRecurringTotal + monthlyFromWeekly + averageNonRecurring;
-    
-    // Calculate projected savings
-    const projectedSavings = MONTHLY_INCOME - projectedExpenses;
-    
-    result.push({
-      month: monthStr,
-      income: MONTHLY_INCOME,
-      expenses: projectedExpenses,
-      savings: projectedSavings
-    });
-  }
-  
-  return result;
 };
 
 // Calculate totals by category

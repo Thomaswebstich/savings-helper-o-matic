@@ -1,9 +1,11 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
 import { ExpenseTable } from '@/components/ExpenseTable';
 import { FinancialCharts } from '@/components/FinancialCharts';
 import { SavingsProjection } from '@/components/SavingsProjection';
+import { IncomeEditor } from '@/components/IncomeEditor';
 import { 
   Expense, 
   generateMockExpenses, 
@@ -11,7 +13,8 @@ import {
   calculateCategoryTotals, 
   formatCurrency,
   Currency,
-  convertCurrency
+  convertCurrency,
+  MONTHLY_INCOME
 } from '@/lib/data';
 import { ExpenseForm, ExpenseFormValues } from '@/components/ExpenseForm';
 import { Banknote, Calendar, Coins, CreditCard, ReceiptText, TrendingDown, TrendingUp } from 'lucide-react';
@@ -23,6 +26,8 @@ export default function Index() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentExpense, setCurrentExpense] = useState<Expense | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState<Currency>("THB");
+  const [monthlyIncome, setMonthlyIncome] = useState<number>(MONTHLY_INCOME);
+  const [timeRange, setTimeRange] = useState({ monthsBack: 6, monthsForward: 3 });
   
   // Load mock data on component mount
   useEffect(() => {
@@ -36,11 +41,11 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, []);
   
-  // Calculate monthly totals for charts
+  // Calculate monthly totals for charts with current time range
   const monthlyData = useMemo(() => {
     if (expenses.length === 0) return [];
-    return calculateMonthlyTotals(expenses);
-  }, [expenses]);
+    return calculateMonthlyTotals(expenses, monthlyIncome, timeRange.monthsBack, timeRange.monthsForward);
+  }, [expenses, monthlyIncome, timeRange]);
   
   // Calculate category totals
   const categoryData = useMemo(() => {
@@ -52,7 +57,7 @@ export default function Index() {
   const currentMonthData = useMemo(() => {
     if (monthlyData.length === 0) return null;
     
-    const data = monthlyData[monthlyData.length - 4]; // Get the most recent actual month
+    const data = monthlyData[monthlyData.length - timeRange.monthsForward - 1]; // Get the most recent actual month
     if (!data) return null;
     
     // Convert totals to display currency
@@ -62,14 +67,14 @@ export default function Index() {
       expenses: convertCurrency(data.expenses, "THB", displayCurrency),
       savings: convertCurrency(data.savings, "THB", displayCurrency)
     };
-  }, [monthlyData, displayCurrency]);
+  }, [monthlyData, displayCurrency, timeRange.monthsForward]);
   
   // Calculate month-over-month change for expenses
   const expenseChange = useMemo(() => {
     if (monthlyData.length < 2) return { value: 0, isPositive: false };
     
-    const currentMonth = monthlyData[monthlyData.length - 4];
-    const previousMonth = monthlyData[monthlyData.length - 5];
+    const currentMonth = monthlyData[monthlyData.length - timeRange.monthsForward - 1];
+    const previousMonth = monthlyData[monthlyData.length - timeRange.monthsForward - 2];
     
     if (!currentMonth || !previousMonth) return { value: 0, isPositive: false };
     
@@ -78,14 +83,14 @@ export default function Index() {
       value: Math.abs(change),
       isPositive: change < 0 // Lower expenses is positive trend
     };
-  }, [monthlyData]);
+  }, [monthlyData, timeRange.monthsForward]);
   
   // Calculate month-over-month change for savings
   const savingsChange = useMemo(() => {
     if (monthlyData.length < 2) return { value: 0, isPositive: false };
     
-    const currentMonth = monthlyData[monthlyData.length - 4];
-    const previousMonth = monthlyData[monthlyData.length - 5];
+    const currentMonth = monthlyData[monthlyData.length - timeRange.monthsForward - 1];
+    const previousMonth = monthlyData[monthlyData.length - timeRange.monthsForward - 2];
     
     if (!currentMonth || !previousMonth) return { value: 0, isPositive: false };
     
@@ -94,7 +99,7 @@ export default function Index() {
       value: Math.abs(change),
       isPositive: change > 0
     };
-  }, [monthlyData]);
+  }, [monthlyData, timeRange.monthsForward]);
   
   // Calculate total expenses
   const totalExpenses = useMemo(() => {
@@ -163,6 +168,20 @@ export default function Index() {
     setCurrentExpense(null);
   };
   
+  // Handle income change
+  const handleIncomeChange = (newIncome: number) => {
+    setMonthlyIncome(newIncome);
+    toast({
+      title: "Income Updated",
+      description: `Monthly income set to ${formatCurrency(newIncome, displayCurrency)}`,
+    });
+  };
+  
+  // Handle time range change from charts
+  const handleTimeRangeChange = (newRange: { monthsBack: number, monthsForward: number }) => {
+    setTimeRange(newRange);
+  };
+  
   return (
     <div className="min-h-screen bg-background page-transition">
       <Navbar 
@@ -199,7 +218,13 @@ export default function Index() {
               />
               <DataCard
                 title="Monthly Income"
-                value={currentMonthData ? formatCurrency(currentMonthData.income, displayCurrency) : "0"}
+                value={
+                  <IncomeEditor 
+                    income={currentMonthData ? currentMonthData.income : monthlyIncome} 
+                    currency={displayCurrency} 
+                    onIncomeChange={handleIncomeChange} 
+                  />
+                }
                 icon={<Banknote className="h-5 w-5" />}
               />
               <DataCard
@@ -222,6 +247,7 @@ export default function Index() {
                 <FinancialCharts 
                   monthlyData={monthlyData} 
                   categoryData={categoryData}
+                  onTimeRangeChange={handleTimeRangeChange}
                 />
               </div>
               <div className="lg:col-span-1">

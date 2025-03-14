@@ -26,17 +26,27 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface FinancialChartsProps {
   monthlyData: MonthlyTotal[];
   categoryData: CategoryTotal[];
+  onTimeRangeChange?: (range: { monthsBack: number, monthsForward: number }) => void;
 }
 
-export function FinancialCharts({ monthlyData, categoryData }: FinancialChartsProps) {
+export function FinancialCharts({ 
+  monthlyData, 
+  categoryData,
+  onTimeRangeChange
+}: FinancialChartsProps) {
   const [visibleMonths, setVisibleMonths] = useState({
     start: Math.max(0, monthlyData.length - 6),
     end: monthlyData.length
+  });
+  
+  const [timeRange, setTimeRange] = useState({
+    monthsBack: 6,
+    monthsForward: 3
   });
   
   // Slice the data for the visible range
@@ -82,6 +92,47 @@ export function FinancialCharts({ monthlyData, categoryData }: FinancialChartsPr
     }
   };
   
+  // Zoom time range
+  const zoomIn = () => {
+    if (timeRange.monthsBack > 3) {
+      const newRange = {
+        monthsBack: timeRange.monthsBack - 1,
+        monthsForward: timeRange.monthsForward
+      };
+      setTimeRange(newRange);
+      if (onTimeRangeChange) {
+        onTimeRangeChange(newRange);
+      }
+    }
+  };
+  
+  const zoomOut = () => {
+    if (timeRange.monthsBack < 12) {
+      const newRange = {
+        monthsBack: timeRange.monthsBack + 1,
+        monthsForward: timeRange.monthsForward
+      };
+      setTimeRange(newRange);
+      if (onTimeRangeChange) {
+        onTimeRangeChange(newRange);
+      }
+    }
+  };
+  
+  // Adjust projection months
+  const adjustProjection = (change: number) => {
+    if (timeRange.monthsForward + change >= 1 && timeRange.monthsForward + change <= 12) {
+      const newRange = {
+        monthsBack: timeRange.monthsBack,
+        monthsForward: timeRange.monthsForward + change
+      };
+      setTimeRange(newRange);
+      if (onTimeRangeChange) {
+        onTimeRangeChange(newRange);
+      }
+    }
+  };
+  
   // Format the tooltip values
   const formatTooltipValue = (value: number) => {
     return formatCurrency(value);
@@ -100,25 +151,77 @@ export function FinancialCharts({ monthlyData, categoryData }: FinancialChartsPr
             <TabsTrigger value="categories">Categories</TabsTrigger>
           </TabsList>
           
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={showPrevious}
-              disabled={visibleMonths.start <= 0}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={showNext}
-              disabled={visibleMonths.end >= monthlyData.length}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center mr-4 text-xs text-muted-foreground">
+              <span>Historical: {timeRange.monthsBack} months</span>
+              <span className="mx-1">|</span>
+              <span>Projected: {timeRange.monthsForward} months</span>
+            </div>
+            
+            <div className="flex items-center space-x-1 mr-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                onClick={zoomIn}
+                title="Show fewer months"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                onClick={zoomOut}
+                title="Show more months"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            
+            <div className="flex items-center space-x-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => adjustProjection(-1)}
+                disabled={timeRange.monthsForward <= 1}
+                title="Decrease projection months"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => adjustProjection(1)}
+                disabled={timeRange.monthsForward >= 12}
+                title="Increase projection months"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            
+            <div className="ml-2 flex items-center space-x-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                onClick={showPrevious}
+                disabled={visibleMonths.start <= 0}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                onClick={showNext}
+                disabled={visibleMonths.end >= monthlyData.length}
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
         </div>
           
@@ -211,7 +314,7 @@ export function FinancialCharts({ monthlyData, categoryData }: FinancialChartsPr
                     <Cell 
                       key={`cell-${index}`} 
                       fill={entry.savings < 0 ? "#f43f5e" : "#10b981"} 
-                      opacity={hasFutureData && index >= visibleData.length - 3 ? 0.7 : 1}
+                      opacity={hasFutureData && index >= visibleData.length - timeRange.monthsForward ? 0.7 : 1}
                     />
                   ))}
                 </Bar>
