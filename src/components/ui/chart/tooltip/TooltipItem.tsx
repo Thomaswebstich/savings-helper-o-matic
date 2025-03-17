@@ -59,7 +59,7 @@ export function TooltipItem({
         <span className="text-muted-foreground">
           {itemConfig?.label || item.name}
         </span>
-        {item.value && (
+        {item.value !== undefined && (
           <span className="font-mono font-medium tabular-nums text-foreground">
             {item.value.toLocaleString()}
           </span>

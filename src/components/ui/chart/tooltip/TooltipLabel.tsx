@@ -28,14 +28,14 @@ export function TooltipLabel({
   }
 
   const [item] = payload
-  const key = `${labelKey || item.dataKey || item.name || "value"}`
-  const itemConfig = getPayloadConfigFromPayload(config, item, key)
+  const key = `${labelKey || (item && (item.dataKey || item.name)) || "value"}`
+  const itemConfig = item ? getPayloadConfigFromPayload(config, item, key) : undefined
   const value =
     !labelKey && typeof label === "string"
       ? config[label as keyof typeof config]?.label || label
-      : itemConfig?.label
+      : itemConfig?.label || key
 
-  if (labelFormatter) {
+  if (labelFormatter && payload) {
     return (
       <div className={cn("font-medium", labelClassName)}>
         {labelFormatter(value, payload)}

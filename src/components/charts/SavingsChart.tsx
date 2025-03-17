@@ -10,7 +10,7 @@ import {
   XAxis, 
   YAxis
 } from 'recharts';
-import { ChartContainer } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { chartConfig } from './financialChartUtils';
 
 interface SavingsChartProps {
@@ -44,7 +44,7 @@ export function SavingsChart({
               tickLine={false}
               tick={{ fontSize: 10 }}
             />
-            <Tooltip 
+            <ChartTooltip 
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   const value = Number(payload[0].value);
