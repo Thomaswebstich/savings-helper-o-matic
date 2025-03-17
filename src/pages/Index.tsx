@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ExpenseForm } from '@/components/ExpenseForm';
@@ -14,7 +13,7 @@ import { ExpenseTableWrapper } from '@/components/dashboard/ExpenseTableWrapper'
 export default function Index() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
-  // Use our custom hooks for data and actions
+  // Use our refactored hook for data and actions
   const {
     expenses,
     setExpenses,
