@@ -43,14 +43,16 @@ export function TopCategories({
       
       // Extract information from category object if available
       if (expense.category && typeof expense.category === 'object' && expense.category !== null) {
+        const categoryObj = expense.category;
+        
         // Safely access name property with type guard
-        if ('name' in expense.category && typeof expense.category.name === 'string') {
-          categoryName = expense.category.name;
+        if ('name' in categoryObj && typeof categoryObj.name === 'string') {
+          categoryName = categoryObj.name;
         }
         
         // Explicitly check for color property in the category object
-        if ('color' in expense.category && typeof expense.category.color === 'string') {
-          color = expense.category.color;
+        if ('color' in categoryObj && typeof categoryObj.color === 'string') {
+          color = categoryObj.color;
         }
       } else if (typeof expense.category === 'string') {
         categoryName = expense.category;
