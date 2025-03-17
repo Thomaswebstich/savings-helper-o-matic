@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { MonthlyTotal, CategoryTotal, formatCurrency } from '@/lib/data';
+import { MonthlyTotal, CategoryTotal, formatCurrency, Currency, convertCurrency } from '@/lib/data';
 import { 
   Area, 
   AreaChart, 
@@ -9,8 +9,6 @@ import {
   CartesianGrid, 
   Cell, 
   Legend, 
-  Line, 
-  LineChart, 
   Pie, 
   PieChart, 
   ResponsiveContainer, 
@@ -32,12 +30,14 @@ interface FinancialChartsProps {
   monthlyData: MonthlyTotal[];
   categoryData: CategoryTotal[];
   onTimeRangeChange?: (range: { monthsBack: number, monthsForward: number }) => void;
+  displayCurrency?: Currency;
 }
 
 export function FinancialCharts({ 
   monthlyData, 
   categoryData,
-  onTimeRangeChange
+  onTimeRangeChange,
+  displayCurrency = "THB"
 }: FinancialChartsProps) {
   const [visibleMonths, setVisibleMonths] = useState({
     start: Math.max(0, monthlyData.length - 6),
@@ -49,16 +49,31 @@ export function FinancialCharts({
     monthsForward: 3
   });
   
+  // Convert data to the display currency
+  const convertedMonthlyData = monthlyData.map(item => ({
+    ...item,
+    income: convertCurrency(item.income, "THB", displayCurrency),
+    expenses: convertCurrency(item.expenses, "THB", displayCurrency),
+    savings: convertCurrency(item.savings, "THB", displayCurrency)
+  }));
+  
+  // Convert category data to the display currency
+  const convertedCategoryData = categoryData.map(item => ({
+    ...item,
+    amount: convertCurrency(item.amount, "THB", displayCurrency),
+    budget: item.budget ? convertCurrency(item.budget, "THB", displayCurrency) : undefined
+  }));
+  
   // Slice the data for the visible range
-  const visibleData = monthlyData.slice(visibleMonths.start, visibleMonths.end);
+  const visibleData = convertedMonthlyData.slice(visibleMonths.start, visibleMonths.end);
   
   // Top 5 categories for pie chart (rest grouped as "Other")
-  const pieData = [...categoryData]
+  const pieData = [...convertedCategoryData]
     .filter(category => category.amount > 0)
     .slice(0, 5);
   
   // Sum of remaining categories
-  const otherAmount = categoryData
+  const otherAmount = convertedCategoryData
     .slice(5)
     .reduce((sum, category) => sum + category.amount, 0);
   
@@ -68,7 +83,7 @@ export function FinancialCharts({
       categoryId: "Other",
       categoryName: "Other",
       amount: otherAmount,
-      percentage: categoryData
+      percentage: convertedCategoryData
         .slice(5)
         .reduce((sum, category) => sum + category.percentage, 0),
       color: '#94a3b8' // Gray color for "Other"
@@ -86,7 +101,7 @@ export function FinancialCharts({
   };
   
   const showNext = () => {
-    if (visibleMonths.end < monthlyData.length) {
+    if (visibleMonths.end < convertedMonthlyData.length) {
       setVisibleMonths({
         start: visibleMonths.start + 1,
         end: visibleMonths.end + 1
@@ -137,7 +152,7 @@ export function FinancialCharts({
   
   // Format the tooltip values
   const formatTooltipValue = (value: number) => {
-    return formatCurrency(value);
+    return formatCurrency(value, displayCurrency);
   };
   
   // Determine if we have any projected months
@@ -219,7 +234,7 @@ export function FinancialCharts({
                 size="icon"
                 className="h-7 w-7"
                 onClick={showNext}
-                disabled={visibleMonths.end >= monthlyData.length}
+                disabled={visibleMonths.end >= convertedMonthlyData.length}
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
@@ -247,7 +262,7 @@ export function FinancialCharts({
                 </defs>
                 <XAxis dataKey="month" />
                 <YAxis 
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `${CURRENCY_SYMBOLS[displayCurrency]}${value}`}
                 />
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                 <Tooltip 
@@ -295,7 +310,7 @@ export function FinancialCharts({
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                 <XAxis dataKey="month" />
                 <YAxis 
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `${CURRENCY_SYMBOLS[displayCurrency]}${value}`}
                 />
                 <Tooltip 
                   formatter={formatTooltipValue}
@@ -381,11 +396,11 @@ export function FinancialCharts({
             <div className="flex flex-col justify-center">
               <h3 className="text-sm font-medium mb-3">Top Categories</h3>
               <div className="space-y-3">
-                {categoryData.slice(0, 5).map(category => (
+                {convertedCategoryData.slice(0, 5).map(category => (
                   <div key={category.categoryId} className="flex items-center justify-between">
                     <div className="flex items-center">
                       <CategoryBadge category={category.categoryName} className="mr-2" />
-                      <span>{formatCurrency(category.amount)}</span>
+                      <span>{formatCurrency(category.amount, displayCurrency)}</span>
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {category.percentage.toFixed(1)}%
@@ -400,3 +415,4 @@ export function FinancialCharts({
     </div>
   );
 }
+

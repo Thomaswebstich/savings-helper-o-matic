@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
@@ -20,6 +19,7 @@ import {
   fetchCategoryBudgets,
   fetchIncomeSources,
   calculateTotalMonthlyIncome,
+  CURRENCY_SYMBOLS
 } from '@/lib/data';
 import { ExpenseForm, ExpenseFormValues } from '@/components/ExpenseForm';
 import { SettingsManager } from '@/components/SettingsManager';
@@ -78,7 +78,11 @@ export default function Index() {
             currency: item.currency as Currency || 'THB'
           }));
           
-          setExpenses(transformedExpenses);
+          const sortedExpenses = transformedExpenses.sort((a, b) => 
+            a.date.getTime() - b.date.getTime()
+          );
+          
+          setExpenses(sortedExpenses);
         } else {
           console.log("No expenses found in database");
           setExpenses([]);
@@ -139,8 +143,9 @@ export default function Index() {
   };
   
   const monthlyIncome = useMemo(() => {
-    return calculateTotalMonthlyIncome(incomeSources);
-  }, [incomeSources]);
+    const totalInTHB = calculateTotalMonthlyIncome(incomeSources);
+    return convertCurrency(totalInTHB, "THB", displayCurrency);
+  }, [incomeSources, displayCurrency]);
   
   const monthlyData = useMemo(() => {
     if (expenses.length === 0) return [];
@@ -216,7 +221,6 @@ export default function Index() {
       }
     }
     
-    // Ensure proper Date objects with timezone consideration
     const expenseDate = new Date(data.date);
     expenseDate.setHours(12, 0, 0, 0);
     
@@ -239,7 +243,6 @@ export default function Index() {
     setExpenses(prev => [newExpense, ...prev]);
     
     try {
-      // Format dates for database
       const formattedDate = expenseDate.toISOString().split('T')[0];
       const formattedStopDate = stopDate ? stopDate.toISOString().split('T')[0] : null;
       
@@ -292,7 +295,6 @@ export default function Index() {
         : undefined
     };
     
-    // Set the time to noon to avoid timezone issues
     preparedExpense.date.setHours(12, 0, 0, 0);
     if (preparedExpense.stopDate) {
       preparedExpense.stopDate.setHours(12, 0, 0, 0);
@@ -314,7 +316,6 @@ export default function Index() {
       
       console.log("Updating expense with categoryId:", data.category, "and name:", categoryName);
       
-      // Ensure proper Date objects with timezone consideration
       const updatedDate = new Date(data.date);
       updatedDate.setHours(12, 0, 0, 0);
       
@@ -348,7 +349,6 @@ export default function Index() {
       );
       
       try {
-        // Format dates for database
         const formattedDate = updatedDate.toISOString().split('T')[0];
         const formattedStopDate = updatedStopDate ? updatedStopDate.toISOString().split('T')[0] : null;
         
@@ -495,15 +495,16 @@ export default function Index() {
             
             {expenses.length > 0 ? (
               <>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                  <div className="lg:col-span-2">
+                <div className="grid grid-cols-1 gap-6 mb-8">
+                  <div>
                     <FinancialCharts 
                       monthlyData={monthlyData} 
                       categoryData={categoryData}
                       onTimeRangeChange={handleTimeRangeChange}
+                      displayCurrency={displayCurrency}
                     />
                   </div>
-                  <div className="lg:col-span-1">
+                  <div>
                     <SavingsProjection 
                       monthlyData={monthlyData} 
                       currency={displayCurrency}

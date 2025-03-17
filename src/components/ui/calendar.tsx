@@ -61,9 +61,9 @@ function Calendar({
         const adjustedDate = new Date(day);
         adjustedDate.setHours(12, 0, 0, 0);
         
-        // If there's an onDaySelect handler in props, call it with the adjusted date
-        if (props.onDaySelect) {
-          props.onDaySelect(adjustedDate);
+        // Use the standard onSelect handler from DayPicker
+        if (props.onSelect && typeof props.onSelect === 'function') {
+          props.onSelect(adjustedDate);
         }
       }}
       {...props}
