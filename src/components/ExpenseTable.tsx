@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Expense, Category, formatCurrency } from '@/lib/data';
 import { CategoryBadge } from './CategoryBadge';
@@ -58,6 +57,7 @@ import {
   TableRow,
   TableCell
 } from "@/components/ui/table";
+import { Progress } from './ui/progress';
 
 interface ExpenseTableProps {
   expenses: Expense[];
@@ -73,6 +73,7 @@ interface MonthGroup {
   label: string;
   expenses: Expense[];
   total: number;
+  categoryTotals: Map<string, number>;
 }
 
 export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense, onDeleteExpense }: ExpenseTableProps) {
@@ -227,7 +228,7 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
     });
   }, [allExpenses, search, selectedCategories]);
   
-  // Group expenses by month
+  // Group expenses by month and calculate category totals within each month
   const monthGroups = useMemo(() => {
     const groups: MonthGroup[] = [];
     const monthMap = new Map<string, MonthGroup>();
@@ -253,13 +254,19 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
           month: monthStart,
           label: monthLabel,
           expenses: [],
-          total: 0
+          total: 0,
+          categoryTotals: new Map<string, number>()
         });
       }
       
       const group = monthMap.get(monthKey)!;
       group.expenses.push(expense);
       group.total += expense.amount;
+      
+      // Update category totals
+      const categoryId = expense.categoryId || 'uncategorized';
+      const currentTotal = group.categoryTotals.get(categoryId) || 0;
+      group.categoryTotals.set(categoryId, currentTotal + expense.amount);
     });
     
     // Convert map to array and sort by month (most recent first)
@@ -370,9 +377,32 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
     setShowProjections(prev => !prev);
   };
 
+  // Get category color for visualization
+  const getCategoryColor = (categoryId: string): string => {
+    const colors = [
+      "#0ea5e9", // blue
+      "#10b981", // green
+      "#f59e0b", // amber
+      "#8b5cf6", // purple
+      "#ec4899", // pink
+      "#94a3b8"  // slate
+    ];
+    
+    // Use consistent color based on category index or id hash
+    const category = categoryMap.get(categoryId);
+    if (category && category.color) return category.color;
+    
+    // If no specific color, hash the category ID to get consistent color
+    const hash = categoryId.split('').reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   return (
     <div className="overflow-hidden rounded-xl border border-border animate-fade-in">
-      <div className="bg-muted/50 px-4 py-3 flex flex-col md:flex-row gap-3 justify-between items-start md:items-center">
+      <div className="bg-muted/50 px-4 py-2 flex flex-col md:flex-row gap-2 justify-between items-start md:items-center">
         <div className="relative w-full md:w-72">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -440,7 +470,7 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
       
       <div className="overflow-x-auto">
         {monthGroups.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-6 text-muted-foreground">
             {search || selectedCategories.length 
               ? "No expenses match your filters" 
               : "No expenses yet"}
@@ -459,18 +489,54 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
                   className="w-full"
                 >
                   <CollapsibleTrigger asChild>
-                    <div className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer">
-                      <div className="flex items-center">
-                        {expanded ? <ChevronDown className="h-4 w-4 mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
-                        <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span className="font-medium">{group.label}</span>
+                    <div className="flex flex-col w-full hover:bg-muted/50 cursor-pointer">
+                      <div className="flex items-center justify-between px-4 py-2">
+                        <div className="flex items-center">
+                          {expanded ? <ChevronDown className="h-3.5 w-3.5 mr-2" /> : <ChevronRight className="h-3.5 w-3.5 mr-2" />}
+                          <Calendar className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                          <span className="font-medium text-sm">{group.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {group.expenses.length} {group.expenses.length === 1 ? 'expense' : 'expenses'}
+                          </span>
+                          <span className="font-medium text-sm">{formatCurrency(group.total)}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          {group.expenses.length} {group.expenses.length === 1 ? 'expense' : 'expenses'}
-                        </span>
-                        <span className="font-medium">{formatCurrency(group.total)}</span>
-                      </div>
+                      
+                      {/* Category progress bars - only show when not expanded */}
+                      {!expanded && group.categoryTotals.size > 0 && (
+                        <div className="px-4 pb-2 pt-0.5 grid grid-cols-1 gap-1">
+                          {Array.from(group.categoryTotals.entries())
+                            .sort((a, b) => b[1] - a[1]) // Sort by amount (highest first)
+                            .slice(0, 3) // Only show top 3 categories
+                            .map(([categoryId, amount]) => {
+                              const percentage = (amount / group.total) * 100;
+                              const category = categoryMap.get(categoryId);
+                              const categoryColor = getCategoryColor(categoryId);
+                              
+                              return (
+                                <div key={categoryId} className="flex items-center gap-2">
+                                  <div className="w-24 flex-shrink-0">
+                                    <CategoryBadge 
+                                      category={category || categoryId} 
+                                      className="text-xs py-0 px-1.5 h-4"
+                                    />
+                                  </div>
+                                  <Progress
+                                    value={percentage}
+                                    className="h-1.5 flex-grow"
+                                    indicatorColor={categoryColor}
+                                  />
+                                  <span className="text-xs text-muted-foreground w-12 text-right">
+                                    {percentage.toFixed(0)}%
+                                  </span>
+                                </div>
+                              );
+                            })
+                          }
+                        </div>
+                      )}
                     </div>
                   </CollapsibleTrigger>
                   
@@ -479,7 +545,7 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
                       <TableHeader>
                         <TableRow className="notion-db-header">
                           <TableHead 
-                            className="font-medium w-2/5 cursor-pointer"
+                            className="font-medium w-2/5 cursor-pointer py-1.5"
                             onClick={() => requestSort('description')}
                           >
                             <div className="flex items-center">
@@ -487,7 +553,7 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
                             </div>
                           </TableHead>
                           <TableHead 
-                            className="font-medium w-1/5 cursor-pointer"
+                            className="font-medium w-1/5 cursor-pointer py-1.5"
                             onClick={() => requestSort('amount')}
                           >
                             <div className="flex items-center">
@@ -495,28 +561,28 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
                             </div>
                           </TableHead>
                           <TableHead 
-                            className="font-medium w-1/5 cursor-pointer"
+                            className="font-medium w-1/5 cursor-pointer py-1.5"
                             onClick={() => requestSort('date')}
                           >
                             <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
+                              <Calendar className="w-3.5 h-3.5 mr-1" />
                               Date {getSortIcon('date')}
                             </div>
                           </TableHead>
                           <TableHead 
-                            className="font-medium w-1/5 cursor-pointer"
+                            className="font-medium w-1/5 cursor-pointer py-1.5"
                             onClick={() => requestSort('category')}
                           >
                             <div className="flex items-center">
                               Category {getSortIcon('category')}
                             </div>
                           </TableHead>
-                          <TableHead className="font-medium w-12">
+                          <TableHead className="font-medium w-8 py-1.5">
                             <div className="flex items-center">
-                              <CheckSquare className="w-4 h-4" />
+                              <CheckSquare className="w-3.5 h-3.5" />
                             </div>
                           </TableHead>
-                          <TableHead className="font-medium text-right w-20">
+                          <TableHead className="font-medium text-right w-20 py-1.5">
                             Actions
                           </TableHead>
                         </TableRow>
@@ -525,41 +591,44 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
                         {group.expenses.map(expense => (
                           <ContextMenu key={expense.id}>
                             <ContextMenuTrigger asChild>
-                              <TableRow className={`notion-db-row group ${expense.isProjection ? 'bg-muted/30' : ''}`}>
-                                <TableCell className={`font-medium ${expense.isProjection ? 'text-muted-foreground italic' : ''}`}>
+                              <TableRow className={`notion-db-row group ${expense.isProjection ? 'bg-muted/30' : ''} h-8`}>
+                                <TableCell className={`font-medium ${expense.isProjection ? 'text-muted-foreground italic' : ''} py-1`}>
                                   {expense.description}
                                   {expense.isProjection && <span className="ml-2 text-xs text-muted-foreground">(Projected)</span>}
                                 </TableCell>
-                                <TableCell className="text-muted-foreground">{formatCurrency(expense.amount)}</TableCell>
-                                <TableCell className="text-muted-foreground">
+                                <TableCell className="text-muted-foreground py-1">{formatCurrency(expense.amount)}</TableCell>
+                                <TableCell className="text-muted-foreground py-1">
                                   {expense.date instanceof Date
                                     ? format(expense.date, 'MMM d, yyyy')
                                     : format(new Date(expense.date), 'MMM d, yyyy')}
                                 </TableCell>
-                                <TableCell>
-                                  <CategoryBadge category={getCategory(expense)} />
+                                <TableCell className="py-1">
+                                  <CategoryBadge 
+                                    category={getCategory(expense)} 
+                                    className="text-xs py-0.5 px-1.5"
+                                  />
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="py-1">
                                   {expense.isRecurring && (
-                                    <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                    <span className="inline-flex items-center rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                                       ↻
                                     </span>
                                   )}
                                 </TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="text-right py-1">
                                   {!expense.isProjection && (
                                     <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                       {onEditExpense && (
                                         <Button 
                                           variant="ghost" 
                                           size="icon" 
-                                          className="h-8 w-8" 
+                                          className="h-6 w-6" 
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             onEditExpense(expense);
                                           }}
                                         >
-                                          <Pencil className="h-4 w-4" />
+                                          <Pencil className="h-3.5 w-3.5" />
                                           <span className="sr-only">Edit</span>
                                         </Button>
                                       )}
@@ -567,13 +636,13 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
                                         <Button 
                                           variant="ghost" 
                                           size="icon" 
-                                          className="h-8 w-8 text-destructive" 
+                                          className="h-6 w-6 text-destructive" 
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             onDeleteExpense(expense.id);
                                           }}
                                         >
-                                          <Trash2 className="h-4 w-4" />
+                                          <Trash2 className="h-3.5 w-3.5" />
                                           <span className="sr-only">Delete</span>
                                         </Button>
                                       )}

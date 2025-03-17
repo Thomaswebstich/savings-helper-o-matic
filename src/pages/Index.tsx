@@ -442,7 +442,7 @@ export default function Index() {
       />
       
       <main className="container mx-auto px-3 py-4">
-        <div className="mb-6 flex justify-between items-center">
+        <div className="mb-5 flex justify-between items-center">
           <div>
             <h1 className="text-xl font-bold mb-0.5">Financial Dashboard</h1>
             <p className="text-muted-foreground text-sm">Track, analyze, and plan your personal finances</p>
@@ -459,7 +459,7 @@ export default function Index() {
         </div>
         
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="glass-card p-4 h-24 animate-pulse-slow" />
             ))}
@@ -510,8 +510,10 @@ export default function Index() {
                       expenses={expenses}
                       categoryData={categoryData}
                       currency={displayCurrency}
+                      timeRange={timeRange}
                     />
                   </div>
+                  
                   <div>
                     <SavingsProjection 
                       monthlyData={monthlyData} 
