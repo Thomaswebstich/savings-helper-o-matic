@@ -47,7 +47,7 @@ export function SavingsChart({
             <Tooltip 
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
-                  const value = payload[0].value as number;
+                  const value = Number(payload[0].value);
                   return (
                     <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
                       <p className="font-medium mb-1">{payload[0].payload.month}</p>
