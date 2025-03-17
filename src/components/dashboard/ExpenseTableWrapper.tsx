@@ -10,6 +10,7 @@ interface ExpenseTableWrapperProps {
   onEditExpense?: (expense: Expense) => void;
   onDeleteExpense?: (id: string) => void;
   monthlyIncome?: number;
+  incomeSources?: any[];
 }
 
 export function ExpenseTableWrapper({
@@ -18,7 +19,8 @@ export function ExpenseTableWrapper({
   onAddExpense,
   onEditExpense,
   onDeleteExpense,
-  monthlyIncome
+  monthlyIncome,
+  incomeSources = []
 }: ExpenseTableWrapperProps) {
   return (
     <div className="mt-5">
@@ -31,6 +33,7 @@ export function ExpenseTableWrapper({
         onEditExpense={onEditExpense}
         onDeleteExpense={onDeleteExpense}
         monthlyIncome={monthlyIncome}
+        incomeSources={incomeSources}
       />
     </div>
   );

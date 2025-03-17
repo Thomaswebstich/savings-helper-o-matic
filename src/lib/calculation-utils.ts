@@ -122,7 +122,7 @@ export const calculateMonthlyTotals = (
 };
 
 // Helper function to calculate income for a specific month
-function calculateMonthIncomeForDate(incomeSources: IncomeSource[], monthDate: Date): number {
+export function calculateMonthIncomeForDate(incomeSources: IncomeSource[], monthDate: Date): number {
   const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
   const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
   

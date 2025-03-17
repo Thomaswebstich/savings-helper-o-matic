@@ -15,6 +15,8 @@ import {
   Table,
   TableBody,
 } from "@/components/ui/table";
+import { format } from 'date-fns';
+import { calculateMonthIncomeForDate } from '@/lib/calculation-utils';
 
 interface ExpenseMonthGroupProps {
   group: MonthGroup;
@@ -33,6 +35,7 @@ interface ExpenseMonthGroupProps {
     categoryName: string;
     color: string;
   }>;
+  incomeSources?: any[];
 }
 
 export function ExpenseMonthGroup({
@@ -47,8 +50,15 @@ export function ExpenseMonthGroup({
   getCategoryColor,
   showAgainstIncome = false,
   monthlyIncome = 0,
-  categoryLegendData = []
+  categoryLegendData = [],
+  incomeSources = []
 }: ExpenseMonthGroupProps) {
+  
+  // Calculate income for this specific month
+  const monthDate = group.month;
+  const monthSpecificIncome = incomeSources && incomeSources.length > 0 
+    ? calculateMonthIncomeForDate(incomeSources, monthDate)
+    : monthlyIncome;
   
   return (
     <Collapsible 
@@ -63,7 +73,7 @@ export function ExpenseMonthGroup({
             total={group.total}
             expenseCount={group.expenses.length}
             isExpanded={isExpanded}
-            income={monthlyIncome}
+            income={monthSpecificIncome}
           />
           
           {/* Category stacked bar - only show when not expanded */}
@@ -74,7 +84,7 @@ export function ExpenseMonthGroup({
               categoryMap={categoryMap}
               getCategoryColor={getCategoryColor}
               showAgainstIncome={showAgainstIncome}
-              monthlyIncome={monthlyIncome}
+              monthlyIncome={monthSpecificIncome}
               categoryLegendData={categoryLegendData}
             />
           }

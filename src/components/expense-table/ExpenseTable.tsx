@@ -23,6 +23,7 @@ interface ExpenseTableProps {
   onEditExpense?: (expense: Expense) => void;
   onDeleteExpense?: (id: string) => void;
   monthlyIncome?: number;
+  incomeSources?: any[];
 }
 
 export function ExpenseTable({ 
@@ -31,7 +32,8 @@ export function ExpenseTable({
   onAddExpense, 
   onEditExpense, 
   onDeleteExpense,
-  monthlyIncome = 0
+  monthlyIncome = 0,
+  incomeSources = []
 }: ExpenseTableProps) {
   // Use our custom hooks
   const { sortConfig, requestSort, getSortIcon } = useSortExpenses();
@@ -227,6 +229,7 @@ export function ExpenseTable({
                 showAgainstIncome={showAgainstIncome}
                 monthlyIncome={monthlyIncome}
                 categoryLegendData={categoryLegendData}
+                incomeSources={incomeSources}
               />
             ))}
           </div>
