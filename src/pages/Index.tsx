@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
@@ -47,7 +48,7 @@ export default function Index() {
           const transformedExpenses: Expense[] = data.map(item => ({
             id: item.id,
             description: item.description,
-            amount: parseFloat(item.amount),
+            amount: parseFloat(item.amount), // Convert string to number
             date: new Date(item.date),
             category: item.category as any,
             isRecurring: item.is_recurring || false,
@@ -158,7 +159,7 @@ export default function Index() {
         .from('expenses')
         .insert({
           description: newExpense.description,
-          amount: newExpense.amount,
+          amount: newExpense.amount, // Supabase will handle the conversion to string
           date: newExpense.date.toISOString().split('T')[0],
           category: newExpense.category,
           is_recurring: newExpense.isRecurring,
@@ -205,7 +206,7 @@ export default function Index() {
           .from('expenses')
           .update({
             description: data.description,
-            amount: data.amount,
+            amount: data.amount, // Supabase will handle the conversion to string
             date: data.date.toISOString().split('T')[0],
             category: data.category,
             is_recurring: data.isRecurring,

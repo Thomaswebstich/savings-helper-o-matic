@@ -370,7 +370,7 @@ export const seedDatabaseWithMockData = async (expenses: Expense[]) => {
   
   // Transform expenses to DB format
   const dbExpenses = expenses.map(expense => ({
-    amount: expense.amount,
+    amount: expense.amount, // Supabase will handle number to string conversion
     category: expense.category,
     date: expense.date.toISOString().split('T')[0],
     description: expense.description,
