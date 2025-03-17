@@ -39,7 +39,11 @@ export function StackedBar({
       {validSegments.map((segment, index) => (
         <div
           key={segment.id}
-          className="h-full first:rounded-l-full last:rounded-r-full"
+          className={cn(
+            "h-full",
+            index === 0 ? "rounded-l-full" : "",
+            index === validSegments.length - 1 ? "rounded-r-full" : ""
+          )}
           style={{ 
             width: `${segment.value}%`,
             backgroundColor: segment.color,

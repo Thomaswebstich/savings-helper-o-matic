@@ -29,30 +29,30 @@ export function ExpenseTableRow({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <TableRow className={`notion-db-row group ${expense.isProjection ? 'bg-muted/30' : ''} h-8`}>
-          <TableCell className={`font-medium ${expense.isProjection ? 'text-muted-foreground italic' : ''} py-1 w-2/5`}>
+          <TableCell className={`font-medium ${expense.isProjection ? 'text-muted-foreground italic' : ''} px-4 py-1 w-2/5`}>
             {expense.description}
             {expense.isProjection && <span className="ml-2 text-xs text-muted-foreground">(Projected)</span>}
           </TableCell>
-          <TableCell className="text-muted-foreground py-1 w-1/5">{formatCurrency(expense.amount)}</TableCell>
-          <TableCell className="text-muted-foreground py-1 w-1/5">
+          <TableCell className="text-muted-foreground px-4 py-1 w-1/5">{formatCurrency(expense.amount)}</TableCell>
+          <TableCell className="text-muted-foreground px-4 py-1 w-1/5">
             {expense.date instanceof Date
               ? format(expense.date, 'MMM d, yyyy')
               : format(new Date(expense.date), 'MMM d, yyyy')}
           </TableCell>
-          <TableCell className="py-1 w-1/5">
+          <TableCell className="px-4 py-1 w-1/5">
             <CategoryBadge 
               category={getCategory(expense)} 
               className="text-xs py-0.5 px-1.5"
             />
           </TableCell>
-          <TableCell className="py-1 w-8">
+          <TableCell className="px-4 py-1 w-8">
             {expense.isRecurring && (
               <span className="inline-flex items-center rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                 ↻
               </span>
             )}
           </TableCell>
-          <TableCell className="text-right py-1 w-20">
+          <TableCell className="text-right px-4 py-1 w-20">
             {!expense.isProjection && (
               <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {onEditExpense && (

@@ -1,14 +1,17 @@
 
-import { useState, useMemo } from 'react';
-import { Expense, Category, formatCurrency } from '@/lib/data';
+import { useMemo, useState } from 'react';
+import { Expense, Category } from '@/lib/data';
 import { ExpenseTableFilters } from './ExpenseTableFilters';
 import { ExpenseMonthGroup } from './ExpenseMonthGroup';
 import { ExpenseProjectionToggle } from './ExpenseProjectionToggle';
 import { generateProjectedExpenses } from './expense-utils';
-import { MonthGroup, SortConfig } from './types';
-import { format, startOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import { useSortExpenses } from './hooks/useSortExpenses';
+import { useExpandedMonths } from './hooks/useExpandedMonths';
+import { useExpenseFilters } from './hooks/useExpenseFilters';
+import { filterExpense, groupExpensesByMonth, getCategoryColor } from './utils/expense-filter-utils';
 
 interface ExpenseTableProps {
   expenses: Expense[];
@@ -25,12 +28,12 @@ export function ExpenseTable({
   onEditExpense, 
   onDeleteExpense 
 }: ExpenseTableProps) {
-  const [search, setSearch] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ 
-    key: 'date', direction: 'desc' 
-  });
-  const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
+  // Use our custom hooks
+  const { sortConfig, requestSort, getSortIcon } = useSortExpenses();
+  const { expandedMonths, toggleMonthExpansion, isMonthExpanded } = useExpandedMonths();
+  const { search, setSearch, selectedCategories, toggleCategory, clearFilters } = useExpenseFilters();
+  
+  // State for projections
   const [showProjections, setShowProjections] = useState(true);
   
   // Create a category map for easier lookups
@@ -56,7 +59,6 @@ export function ExpenseTable({
   // Filter expenses based on search and category filters
   const filteredExpenses = useMemo(() => {
     return allExpenses.filter(expense => {
-      // Use the filterExpense helper function
       return filterExpense(expense, search, selectedCategories);
     });
   }, [allExpenses, search, selectedCategories]);
@@ -66,50 +68,6 @@ export function ExpenseTable({
     return groupExpensesByMonth(filteredExpenses, sortConfig, categoryMap);
   }, [filteredExpenses, sortConfig, categoryMap]);
   
-  // Toggle sort
-  const requestSort = (key: keyof Expense) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
-  
-  // Toggle category filter
-  const toggleCategory = (categoryId: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(categoryId)
-        ? prev.filter(c => c !== categoryId)
-        : [...prev, categoryId]
-    );
-  };
-  
-  // Clear all filters
-  const clearFilters = () => {
-    setSearch('');
-    setSelectedCategories([]);
-  };
-  
-  // Get sort icon for table headers
-  const getSortIcon = (key: keyof Expense) => {
-    if (sortConfig.key !== key) return null;
-    return sortConfig.direction === 'asc' ? 'asc' : 'desc';
-  };
-
-  // Toggle month expansion
-  const toggleMonthExpansion = (monthKey: string) => {
-    setExpandedMonths(prev => 
-      prev.includes(monthKey)
-        ? prev.filter(m => m !== monthKey)
-        : [...prev, monthKey]
-    );
-  };
-
-  // Check if month is expanded
-  const isMonthExpanded = (monthKey: string) => {
-    return expandedMonths.includes(monthKey);
-  };
-
   // Toggle projections visibility
   const toggleProjections = () => {
     setShowProjections(prev => !prev);
@@ -171,119 +129,4 @@ export function ExpenseTable({
       </div>
     </div>
   );
-}
-
-// Helper functions
-function filterExpense(expense: Expense, search: string, selectedCategories: string[]): boolean {
-  // Filter by search term
-  const matchesSearch = 
-    expense.description.toLowerCase().includes(search.toLowerCase()) ||
-    formatCurrency(expense.amount).includes(search);
-  
-  // Filter by selected categories
-  const matchesCategory = selectedCategories.length === 0 || 
-    selectedCategories.includes(expense.categoryId);
-  
-  return matchesSearch && matchesCategory;
-}
-
-function groupExpensesByMonth(filteredExpenses: Expense[], sortConfig: SortConfig, categoryMap: Map<string, Category>): MonthGroup[] {
-  const groups: MonthGroup[] = [];
-  const monthMap = new Map<string, MonthGroup>();
-  
-  // Sort expenses by date first
-  const sortedExpenses = [...filteredExpenses].sort((a, b) => {
-    const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-    const dateB = b.date instanceof Date ? b.date : new Date(b.date);
-    return sortConfig.key === 'date' && sortConfig.direction === 'asc' 
-      ? dateA.getTime() - dateB.getTime()
-      : dateB.getTime() - dateA.getTime();
-  });
-  
-  // Group expenses by month
-  sortedExpenses.forEach(expense => {
-    const expenseDate = expense.date instanceof Date ? expense.date : new Date(expense.date);
-    const monthStart = startOfMonth(expenseDate);
-    const monthKey = format(monthStart, 'yyyy-MM');
-    const monthLabel = format(monthStart, 'MMMM yyyy');
-    
-    if (!monthMap.has(monthKey)) {
-      monthMap.set(monthKey, {
-        month: monthStart,
-        label: monthLabel,
-        expenses: [],
-        total: 0,
-        categoryTotals: new Map<string, number>()
-      });
-    }
-    
-    const group = monthMap.get(monthKey)!;
-    group.expenses.push(expense);
-    group.total += expense.amount;
-    
-    // Update category totals
-    const categoryId = expense.categoryId || 'uncategorized';
-    const currentTotal = group.categoryTotals.get(categoryId) || 0;
-    group.categoryTotals.set(categoryId, currentTotal + expense.amount);
-  });
-  
-  // Convert map to array and sort by month (most recent first)
-  Array.from(monthMap.values()).forEach(group => {
-    // Sort expenses within the month group based on sortConfig
-    group.expenses.sort((a, b) => {
-      if (sortConfig.key === 'date') {
-        const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-        const dateB = b.date instanceof Date ? b.date : new Date(b.date);
-        return sortConfig.direction === 'asc' 
-          ? dateA.getTime() - dateB.getTime()
-          : dateB.getTime() - dateA.getTime();
-      }
-      
-      if (sortConfig.key === 'amount') {
-        return sortConfig.direction === 'asc' 
-          ? a.amount - b.amount
-          : b.amount - a.amount;
-      }
-      
-      if (sortConfig.key === 'description') {
-        return sortConfig.direction === 'asc'
-          ? a.description.localeCompare(b.description)
-          : b.description.localeCompare(a.description);
-      }
-      
-      if (sortConfig.key === 'category') {
-        const catA = categoryMap.get(a.categoryId)?.name || '';
-        const catB = categoryMap.get(b.categoryId)?.name || '';
-        return sortConfig.direction === 'asc'
-          ? catA.localeCompare(catB)
-          : catB.localeCompare(catA);
-      }
-      
-      return 0;
-    });
-    
-    groups.push(group);
-  });
-  
-  // Sort month groups by date (most recent first)
-  return groups.sort((a, b) => b.month.getTime() - a.month.getTime());
-}
-
-// Utility for determining category colors
-function getCategoryColor(categoryId: string): string {
-  const colors = [
-    "#0ea5e9", // blue
-    "#10b981", // green
-    "#f59e0b", // amber
-    "#8b5cf6", // purple
-    "#ec4899", // pink
-    "#94a3b8"  // slate
-  ];
-  
-  // Hash the category ID to get consistent color
-  const hash = categoryId.split('').reduce((acc, char) => {
-    return char.charCodeAt(0) + ((acc << 5) - acc);
-  }, 0);
-  
-  return colors[Math.abs(hash) % colors.length];
 }
