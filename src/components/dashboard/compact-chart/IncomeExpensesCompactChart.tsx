@@ -47,6 +47,10 @@ export function IncomeExpensesCompactChart({
     );
   }
   
+  const handleSetShowCompounded = (value: boolean) => {
+    setShowCompounded(value);
+  };
+  
   return (
     <Card className="w-full">
       <CardHeader className="p-4 pb-0">
@@ -56,7 +60,7 @@ export function IncomeExpensesCompactChart({
           showSavings={showSavings}
           setShowSavings={setShowSavings}
           showCompounded={showCompounded}
-          setShowCompounded={setShowCompounded}
+          setShowCompounded={handleSetShowCompounded}
         />
         
         <ChartSummary

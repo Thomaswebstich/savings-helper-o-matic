@@ -1,6 +1,7 @@
 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ChartHeaderProps {
   title: string;
@@ -40,12 +41,12 @@ export function ChartHeader({
           <Label htmlFor="show-savings" className="text-xs">Show Savings</Label>
         </div>
         
-        {showCompounded !== undefined && setShowCompounded && (
+        {showSavings && showCompounded !== undefined && setShowCompounded && (
           <div className="flex items-center space-x-2">
-            <Switch 
+            <Checkbox 
               id="show-compounded" 
               checked={showCompounded} 
-              onCheckedChange={setShowCompounded} 
+              onCheckedChange={setShowCompounded}
               className="data-[state=checked]:bg-blue-500"
             />
             <Label htmlFor="show-compounded" className="text-xs">Compounded</Label>

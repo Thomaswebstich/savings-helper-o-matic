@@ -1,5 +1,5 @@
 
-import { CURRENCY_SYMBOLS, Currency, convertCurrency } from '@/lib/data';
+import { CURRENCY_SYMBOLS, Currency } from '@/lib/data';
 
 interface ChartSummaryProps {
   currentData: {
@@ -31,12 +31,17 @@ export function ChartSummary({
   const isExpensePositive = expenseChange <= 0;
   const isSavingsPositive = savingsChange >= 0;
 
+  // Format numbers with the correct currency symbol
+  const formatNumber = (value: number) => {
+    return `${CURRENCY_SYMBOLS[displayCurrency]}${Math.round(value).toLocaleString()}`;
+  };
+
   return (
     <div className="flex flex-col items-end text-xs w-full md:w-auto">
       <div className="flex flex-wrap gap-3 md:gap-4">
         <div className="flex items-center gap-1">
           <span className="text-blue-500">Income:</span>
-          <span>{`${CURRENCY_SYMBOLS[displayCurrency]}${Math.round(currentData.income).toLocaleString()}`}</span>
+          <span>{formatNumber(currentData.income)}</span>
           {incomeChange !== 0 && (
             <span className={isIncomePositive ? "text-green-500" : "text-red-500"}>
               {isIncomePositive ? "+" : ""}{Math.round(incomeChange)}%
@@ -45,7 +50,7 @@ export function ChartSummary({
         </div>
         <div className="flex items-center gap-1">
           <span className="text-rose-500">Expenses:</span>
-          <span>{`${CURRENCY_SYMBOLS[displayCurrency]}${Math.round(currentData.expenses).toLocaleString()}`}</span>
+          <span>{formatNumber(currentData.expenses)}</span>
           {expenseChange !== 0 && (
             <span className={isExpensePositive ? "text-green-500" : "text-red-500"}>
               {isExpensePositive ? "" : "+"}{Math.round(expenseChange)}%
@@ -55,7 +60,7 @@ export function ChartSummary({
         {showSavings && (
           <div className="flex items-center gap-1">
             <span className="text-green-500">Savings:</span>
-            <span>{`${CURRENCY_SYMBOLS[displayCurrency]}${Math.round(currentData.savings).toLocaleString()}`}</span>
+            <span>{formatNumber(currentData.savings)}</span>
             {savingsChange !== 0 && (
               <span className={isSavingsPositive ? "text-green-500" : "text-red-500"}>
                 {isSavingsPositive ? "+" : ""}{Math.round(savingsChange)}%
