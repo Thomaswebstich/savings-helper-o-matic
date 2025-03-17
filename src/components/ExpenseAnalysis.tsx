@@ -34,7 +34,21 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
     
-    return expenses.filter(expense => new Date(expense.date) >= cutoffDate);
+    return expenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      
+      // Include the expense if its date is after the cutoff date
+      if (expenseDate >= cutoffDate) {
+        return true;
+      }
+      
+      // Also include recurring expenses that are still active (no stop date or stop date is after cutoff)
+      if (expense.isRecurring && (!expense.stopDate || new Date(expense.stopDate) >= cutoffDate)) {
+        return true;
+      }
+      
+      return false;
+    });
   }, [expenses, timeFrame]);
   
   // Calculate per-day, per-week, and per-month average
@@ -42,8 +56,38 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
     const days = parseInt(timeFrame);
     if (days <= 0 || filteredExpenses.length === 0) return { daily: 0, weekly: 0, monthly: 0 };
     
-    const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const daily = total / days;
+    // We need to account for recurring expenses correctly
+    let recurringDaily = 0;
+    let recurringWeekly = 0;
+    let recurringMonthly = 0;
+    let nonRecurringTotal = 0;
+    
+    filteredExpenses.forEach(expense => {
+      const amount = expense.amount;
+      
+      if (expense.isRecurring) {
+        switch (expense.recurrenceInterval) {
+          case "daily":
+            recurringDaily += amount;
+            break;
+          case "weekly":
+            recurringWeekly += amount;
+            break;
+          case "monthly":
+          default:
+            recurringMonthly += amount;
+            break;
+        }
+      } else {
+        nonRecurringTotal += amount;
+      }
+    });
+    
+    // Calculate daily average for non-recurring expenses
+    const nonRecurringDaily = nonRecurringTotal / days;
+    
+    // Total daily amount = non-recurring daily + recurring daily + (recurring weekly / 7) + (recurring monthly / 30)
+    const daily = nonRecurringDaily + recurringDaily + (recurringWeekly / 7) + (recurringMonthly / 30);
     
     return {
       daily,
@@ -58,8 +102,11 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
     const categoryMap = new Map<string, number>();
     
     filteredExpenses.forEach(expense => {
-      const current = categoryMap.get(expense.category || expense.categoryId) || 0;
-      categoryMap.set(expense.category || expense.categoryId, current + expense.amount);
+      const categoryKey = expense.category || expense.categoryId;
+      if (!categoryKey) return;
+      
+      const current = categoryMap.get(categoryKey) || 0;
+      categoryMap.set(categoryKey, current + expense.amount);
     });
     
     // Calculate total
