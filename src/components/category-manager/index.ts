@@ -1,0 +1,2 @@
+
+export { CategoryManager } from './CategoryManager';

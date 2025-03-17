@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CategoryManager } from './CategoryManager';
+import { CategoryManager } from './category-manager';
 import { BudgetManager } from './BudgetManager';
 import { IncomeManager } from './IncomeManager';
 import { 
