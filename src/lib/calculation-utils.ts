@@ -1,4 +1,5 @@
-import { IncomeSource, Expense, Category, Currency } from './data';
+
+import { IncomeSource, Expense, Category, Currency } from './types';
 import { format, getMonth, getYear } from 'date-fns';
 
 // Helper function to format currency
