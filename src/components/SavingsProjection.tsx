@@ -51,31 +51,34 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
     return futureMonths;
   }, [monthlyData]);
   
-  // Calculate annual projections
-  const annualProjections = useMemo(() => {
+  // Calculate key insights instead of annual projections
+  const savingsInsights = useMemo(() => {
     if (projectedSavings.length === 0) return [];
     
     const currentYear = new Date().getFullYear();
-    const nextYears = [currentYear, currentYear + 1, currentYear + 2];
     
-    return nextYears.map(year => {
-      const monthsInYear = projectedSavings.filter(month => {
-        return month.month.includes(year.toString());
-      });
-      
-      const totalSavings = monthsInYear.reduce((sum, month) => {
-        return sum + convertCurrency(month.savings, "THB", currency);
-      }, 0);
-      
-      const avgMonthlySavings = monthsInYear.length > 0 ? totalSavings / monthsInYear.length : 0;
-      
+    // Calculate average monthly savings
+    const avgMonthlySavings = projectedSavings.reduce((sum, month) => {
+      return sum + convertCurrency(month.savings, "THB", currency);
+    }, 0) / Math.max(1, projectedSavings.length);
+    
+    // Calculate projected yearly total
+    const yearlyTotal = avgMonthlySavings * 12;
+    
+    // Calculate time to reach milestones (in months)
+    const milestones = [5000, 10000, 50000].map(amount => {
+      const monthsToReach = avgMonthlySavings > 0 ? Math.ceil(amount / avgMonthlySavings) : 0;
       return {
-        year,
-        totalSavings,
-        avgMonthlySavings,
-        monthsDataAvailable: monthsInYear.length
+        amount,
+        monthsToReach
       };
     });
+    
+    return {
+      avgMonthlySavings,
+      yearlyTotal,
+      milestones
+    };
   }, [projectedSavings, currency]);
   
   // Calculate rolling sum projections
@@ -102,13 +105,13 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
   }, [currentMonthData, currency]);
   
   return (
-    <div className="glass-card p-6 animate-slide-up w-full space-y-6">
-      <div className="flex items-center justify-between mb-2">
+    <div className="glass-card p-4 animate-slide-up w-full space-y-4">
+      <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-medium">Savings Projection</h3>
         <LineChart className="text-primary h-5 w-5" />
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Current Savings Rate */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -116,14 +119,14 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
             <div className="font-medium">{savingsRate.toFixed(1)}%</div>
           </div>
           <Progress value={savingsRate} className="h-2" />
-          <div className="mt-4 bg-muted/50 rounded-lg p-4 flex items-center justify-between">
+          <div className="mt-2 bg-muted/50 rounded-lg p-3 flex items-center justify-between">
             <div className="flex items-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-3">
-                <DollarSign />
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-2">
+                <DollarSign className="h-4 w-4" />
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">This Month</div>
-                <div className="text-xl font-medium">
+                <div className="text-xs text-muted-foreground">This Month</div>
+                <div className="text-lg font-medium">
                   {currentMonthData ? formatCurrency(currentMonthDisplayData.savings, currency) : `${CURRENCY_SYMBOLS[currency]}0.00`}
                 </div>
               </div>
@@ -135,29 +138,42 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
           </div>
         </div>
       
-        {/* Annual Projections */}
+        {/* Insights (replacing Annual Projections) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">Annual Projections</div>
-            <CalendarRange className="h-4 w-4 text-muted-foreground" />
+            <div className="text-sm text-muted-foreground">Insights</div>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="space-y-2 mt-2">
-            {annualProjections.map(year => (
-              <div key={year.year} className="bg-muted/50 rounded-lg p-3">
-                <div className="flex justify-between items-center">
-                  <div className="text-sm font-medium">{year.year}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {year.monthsDataAvailable} months data
-                  </div>
-                </div>
-                <div className="mt-1 text-lg font-medium">
-                  {formatCurrency(year.totalSavings, currency)}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Avg. {formatCurrency(year.avgMonthlySavings, currency)}/month
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="flex justify-between items-center">
+                <div className="text-xs text-muted-foreground">Avg. Monthly</div>
+                <div className="text-sm font-medium">
+                  {formatCurrency(savingsInsights.avgMonthlySavings, currency)}
                 </div>
               </div>
-            ))}
+              <div className="mt-1 flex justify-between items-center">
+                <div className="text-xs text-muted-foreground">Yearly Projection</div>
+                <div className="text-sm font-medium">
+                  {formatCurrency(savingsInsights.yearlyTotal, currency)}
+                </div>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground mb-1">Time to reach:</div>
+              {savingsInsights.milestones.map((milestone, index) => (
+                <div key={index} className="flex justify-between items-center text-xs">
+                  <span>{formatCurrency(milestone.amount, currency)}</span>
+                  <span className="font-medium">
+                    {milestone.monthsToReach > 0 
+                      ? milestone.monthsToReach < 12 
+                        ? `${milestone.monthsToReach} months` 
+                        : `${(milestone.monthsToReach / 12).toFixed(1)} years`
+                      : 'N/A'}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -168,7 +184,7 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
             <Calculator className="h-4 w-4 text-muted-foreground" />
           </div>
           
-          <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+          <div className="bg-muted/50 rounded-lg p-3 space-y-1">
             {[1, 3, 5].map(years => {
               const avgMonthlySaving = projectedSavings.length > 0 
                 ? projectedSavings.reduce((sum, month) => sum + convertCurrency(month.savings, "THB", currency), 0) / projectedSavings.length 
@@ -187,30 +203,30 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
         </div>
       </div>
       
-      {/* Monthly Breakdown Table - Now in reversed order (newest months at top) */}
-      <div className="mt-6">
-        <div className="flex items-center justify-between mb-3">
+      {/* Monthly Breakdown Table - with "Cumulated Savings" instead of "Running Total" */}
+      <div className="mt-4">
+        <div className="flex items-center justify-between mb-2">
           <h4 className="text-sm font-medium">Monthly Breakdown</h4>
-          <div className="text-xs text-muted-foreground">Next {Math.min(12, projectedSavings.length)} months</div>
+          <div className="text-xs text-muted-foreground">Next {Math.min(6, projectedSavings.length)} months</div>
         </div>
         
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Month</TableHead>
-                <TableHead>Savings</TableHead>
-                <TableHead>Running Total</TableHead>
+                <TableHead className="text-xs">Month</TableHead>
+                <TableHead className="text-xs">Savings</TableHead>
+                <TableHead className="text-xs">Cumulated Savings</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...cumulativeSavings.slice(0, 12)].reverse().map((item, index) => (
+              {[...cumulativeSavings.slice(0, 6)].reverse().map((item, index) => (
                 <TableRow key={item.month}>
-                  <TableCell>{item.month}</TableCell>
-                  <TableCell className={item.savings >= 0 ? "text-green-600" : "text-red-600"}>
+                  <TableCell className="py-2 text-xs">{item.month}</TableCell>
+                  <TableCell className={`py-2 text-xs ${item.savings >= 0 ? "text-green-600" : "text-red-600"}`}>
                     {formatCurrency(item.savings, currency)}
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="py-2 text-xs font-medium">
                     {formatCurrency(item.cumulativeTotal, currency)}
                   </TableCell>
                 </TableRow>

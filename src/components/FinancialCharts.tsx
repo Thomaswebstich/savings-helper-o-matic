@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { MonthlyTotal, CategoryTotal, formatCurrency, Currency, convertCurrency, CURRENCY_SYMBOLS } from '@/lib/data';
 import { 
@@ -50,7 +49,6 @@ export function FinancialCharts({
     monthsForward: 3
   });
   
-  // Convert data to the display currency
   const convertedMonthlyData = monthlyData.map(item => ({
     ...item,
     income: convertCurrency(item.income, "THB", displayCurrency),
@@ -58,41 +56,35 @@ export function FinancialCharts({
     savings: convertCurrency(item.savings, "THB", displayCurrency)
   }));
   
-  // Convert category data to the display currency
   const convertedCategoryData = categoryData.map(item => ({
     ...item,
     amount: convertCurrency(item.amount, "THB", displayCurrency),
     budget: item.budget ? convertCurrency(item.budget, "THB", displayCurrency) : undefined
   }));
   
-  // Slice the data for the visible range
   const visibleData = convertedMonthlyData.slice(visibleMonths.start, visibleMonths.end);
   
-  // Top 5 categories for pie chart (rest grouped as "Other")
   const pieData = [...convertedCategoryData]
     .filter(category => category.amount > 0)
     .slice(0, 5);
   
-  // Sum of remaining categories
   const otherAmount = convertedCategoryData
     .slice(5)
     .reduce((sum, category) => sum + category.amount, 0);
   
-  // If there are more than 5 categories with amounts, add "Other"
   if (otherAmount > 0) {
     pieData.push({
       categoryId: "Other",
       categoryName: "Other",
       amount: otherAmount,
-      budget: undefined, // Make budget field explicitly undefined for the "Other" category
+      budget: undefined,
       percentage: convertedCategoryData
         .slice(5)
         .reduce((sum, category) => sum + category.percentage, 0),
-      color: '#94a3b8' // Gray color for "Other"
+      color: '#94a3b8'
     });
   }
   
-  // Handle previous/next navigation for months
   const showPrevious = () => {
     if (visibleMonths.start > 0) {
       setVisibleMonths({
@@ -111,7 +103,6 @@ export function FinancialCharts({
     }
   };
   
-  // Zoom time range
   const zoomIn = () => {
     if (timeRange.monthsBack > 3) {
       const newRange = {
@@ -138,7 +129,6 @@ export function FinancialCharts({
     }
   };
   
-  // Adjust projection months
   const adjustProjection = (change: number) => {
     if (timeRange.monthsForward + change >= 1 && timeRange.monthsForward + change <= 12) {
       const newRange = {
@@ -152,100 +142,98 @@ export function FinancialCharts({
     }
   };
   
-  // Format the tooltip values
   const formatTooltipValue = (value: number) => {
     return formatCurrency(value, displayCurrency);
   };
   
-  // Determine if we have any projected months
   const hasFutureData = monthlyData.length > 0 && new Date().getMonth() !== new Date(visibleData[visibleData.length - 1].month).getMonth();
 
   return (
-    <div className="glass-card space-y-4 p-6 animate-slide-up">
+    <div className="glass-card space-y-2 p-4 animate-slide-up">
       <Tabs defaultValue="income-expenses">
         <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="income-expenses">Income & Expenses</TabsTrigger>
-            <TabsTrigger value="savings">Savings</TabsTrigger>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsList className="h-8">
+            <TabsTrigger value="income-expenses" className="text-xs px-2 py-1">Income & Expenses</TabsTrigger>
+            <TabsTrigger value="savings" className="text-xs px-2 py-1">Savings</TabsTrigger>
+            <TabsTrigger value="categories" className="text-xs px-2 py-1">Categories</TabsTrigger>
           </TabsList>
           
-          <div className="flex items-center gap-2">
-            <div className="hidden md:flex items-center mr-4 text-xs text-muted-foreground">
-              <span>Historical: {timeRange.monthsBack} months</span>
+          <div className="flex items-center gap-1">
+            <div className="hidden lg:flex items-center mr-2 text-xs text-muted-foreground">
+              <span>Hist: {timeRange.monthsBack}m</span>
               <span className="mx-1">|</span>
-              <span>Projected: {timeRange.monthsForward} months</span>
+              <span>Proj: {timeRange.monthsForward}m</span>
             </div>
             
-            <div className="flex items-center space-x-1 mr-2">
+            <div className="flex items-center space-x-0.5">
               <Button
                 variant="outline"
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6"
                 onClick={zoomIn}
                 title="Show fewer months"
               >
-                <ZoomIn className="h-3.5 w-3.5" />
+                <ZoomIn className="h-3 w-3" />
               </Button>
               <Button
                 variant="outline"
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6"
                 onClick={zoomOut}
                 title="Show more months"
               >
-                <ZoomOut className="h-3.5 w-3.5" />
+                <ZoomOut className="h-3 w-3" />
               </Button>
             </div>
             
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-0.5 ml-1">
               <Button
                 variant="outline"
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6"
                 onClick={() => adjustProjection(-1)}
                 disabled={timeRange.monthsForward <= 1}
                 title="Decrease projection months"
               >
-                <ChevronLeft className="h-3.5 w-3.5" />
+                <ChevronLeft className="h-3 w-3" />
               </Button>
               <Button
                 variant="outline"
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6"
                 onClick={() => adjustProjection(1)}
                 disabled={timeRange.monthsForward >= 12}
                 title="Increase projection months"
               >
-                <ChevronRight className="h-3.5 w-3.5" />
+                <ChevronRight className="h-3 w-3" />
               </Button>
             </div>
             
-            <div className="ml-2 flex items-center space-x-1">
+            <div className="ml-1 flex items-center space-x-0.5">
               <Button
                 variant="outline"
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6"
                 onClick={showPrevious}
                 disabled={visibleMonths.start <= 0}
               >
-                <ChevronLeft className="h-3.5 w-3.5" />
+                <ChevronLeft className="h-3 w-3" />
               </Button>
               <Button
                 variant="outline"
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6"
                 onClick={showNext}
                 disabled={visibleMonths.end >= convertedMonthlyData.length}
               >
-                <ChevronRight className="h-3.5 w-3.5" />
+                <ChevronRight className="h-3 w-3" />
               </Button>
             </div>
           </div>
         </div>
           
-        <TabsContent value="income-expenses" className="pt-4">
-          <div className="h-[300px]">
+        <TabsContent value="income-expenses" className="pt-2">
+          <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={visibleData}>
                 <defs>
@@ -298,15 +286,15 @@ export function FinancialCharts({
             </ResponsiveContainer>
           </div>
           {hasFutureData && (
-            <div className="text-xs text-muted-foreground mt-2 flex items-center">
+            <div className="text-xs text-muted-foreground mt-1 flex items-center">
               <hr className="w-4 border-dashed border-muted-foreground" />
               <span className="mx-2">Dashed line indicates projected expenses</span>
             </div>
           )}
         </TabsContent>
         
-        <TabsContent value="savings" className="pt-4">
-          <div className="h-[300px]">
+        <TabsContent value="savings" className="pt-2">
+          <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={visibleData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
@@ -341,15 +329,15 @@ export function FinancialCharts({
             </ResponsiveContainer>
           </div>
           {hasFutureData && (
-            <div className="text-xs text-muted-foreground mt-2 flex items-center">
+            <div className="text-xs text-muted-foreground mt-1 flex items-center">
               <div className="w-4 h-3 bg-green-500 opacity-70 rounded-sm mr-2" />
               <span>Lighter bars indicate projected savings</span>
             </div>
           )}
         </TabsContent>
         
-        <TabsContent value="categories" className="pt-4">
-          <div className="h-[300px] grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="categories" className="pt-2">
+          <div className="h-[250px] grid grid-cols-1 md:grid-cols-2 gap-4">
             <ResponsiveContainer>
               <PieChart>
                 <Pie
@@ -365,14 +353,13 @@ export function FinancialCharts({
                   labelLine={false}
                 >
                   {pieData.map((entry, index) => {
-                    // Generate colors based on category
                     const colors = [
-                      "#0ea5e9", // blue
-                      "#10b981", // green
-                      "#f59e0b", // orange
-                      "#8b5cf6", // purple
-                      "#ec4899", // pink
-                      "#94a3b8"  // gray (for Other)
+                      "#0ea5e9",
+                      "#10b981",
+                      "#f59e0b",
+                      "#8b5cf6",
+                      "#ec4899",
+                      "#94a3b8"
                     ];
                     
                     return (
@@ -396,15 +383,15 @@ export function FinancialCharts({
             </ResponsiveContainer>
             
             <div className="flex flex-col justify-center">
-              <h3 className="text-sm font-medium mb-3">Top Categories</h3>
-              <div className="space-y-3">
+              <h3 className="text-xs font-medium mb-2">Top Categories</h3>
+              <div className="space-y-2">
                 {convertedCategoryData.slice(0, 5).map(category => (
                   <div key={category.categoryId} className="flex items-center justify-between">
                     <div className="flex items-center">
                       <CategoryBadge category={category.categoryName} className="mr-2" />
-                      <span>{formatCurrency(category.amount, displayCurrency)}</span>
+                      <span className="text-xs">{formatCurrency(category.amount, displayCurrency)}</span>
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-xs text-muted-foreground">
                       {category.percentage.toFixed(1)}%
                     </div>
                   </div>

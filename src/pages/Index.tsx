@@ -441,11 +441,11 @@ export default function Index() {
         onCurrencyChange={setDisplayCurrency}
       />
       
-      <main className="container mx-auto px-4 py-6">
-        <div className="mb-8 flex justify-between items-center">
+      <main className="container mx-auto px-3 py-4">
+        <div className="mb-6 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold mb-1">Financial Dashboard</h1>
-            <p className="text-muted-foreground">Track, analyze, and plan your personal finances</p>
+            <h1 className="text-xl font-bold mb-0.5">Financial Dashboard</h1>
+            <p className="text-muted-foreground text-sm">Track, analyze, and plan your personal finances</p>
           </div>
           
           <Button 
@@ -453,55 +453,63 @@ export default function Index() {
             size="sm" 
             onClick={() => setIsSettingsOpen(true)}
           >
-            <Settings className="h-4 w-4 mr-2" />
+            <Settings className="h-4 w-4 mr-1" />
             Manage Settings
           </Button>
         </div>
         
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="glass-card p-6 h-32 animate-pulse-slow" />
+              <div key={i} className="glass-card p-4 h-24 animate-pulse-slow" />
             ))}
-            <div className="col-span-1 md:col-span-2 lg:col-span-4 glass-card p-6 h-[400px] animate-pulse-slow" />
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 glass-card p-4 h-[350px] animate-pulse-slow" />
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
               <DataCard
                 title="Total Expenses"
                 value={formatCurrency(totalExpenses, displayCurrency)}
-                icon={<ReceiptText className="h-5 w-5" />}
+                icon={<ReceiptText className="h-4 w-4" />}
                 trend={expenseChange.value !== 0 ? expenseChange : undefined}
               />
               <DataCard
                 title="Monthly Income"
                 value={formatCurrency(monthlyIncome, displayCurrency)}
-                icon={<Banknote className="h-5 w-5" />}
+                icon={<Banknote className="h-4 w-4" />}
               />
               <DataCard
                 title="Monthly Expenses"
                 value={currentMonthData ? formatCurrency(currentMonthData.expenses, displayCurrency) : "0"}
-                icon={<CreditCard className="h-5 w-5" />}
+                icon={<CreditCard className="h-4 w-4" />}
                 description="Current month spending"
               />
               <DataCard
                 title="Monthly Savings"
                 value={currentMonthData ? formatCurrency(currentMonthData.savings, displayCurrency) : "0"}
-                icon={<Coins className="h-5 w-5" />}
+                icon={<Coins className="h-4 w-4" />}
                 trend={savingsChange.value !== 0 ? savingsChange : undefined}
               />
             </div>
             
             {expenses.length > 0 ? (
               <>
-                <div className="grid grid-cols-1 gap-6 mb-8">
+                <div className="grid grid-cols-1 gap-4 mb-5">
                   <div>
                     <FinancialCharts 
                       monthlyData={monthlyData} 
                       categoryData={categoryData}
                       onTimeRangeChange={handleTimeRangeChange}
                       displayCurrency={displayCurrency}
+                    />
+                  </div>
+                  
+                  <div>
+                    <ExpenseAnalysis 
+                      expenses={expenses}
+                      categoryData={categoryData}
+                      currency={displayCurrency}
                     />
                   </div>
                   <div>
@@ -511,18 +519,10 @@ export default function Index() {
                     />
                   </div>
                 </div>
-                
-                <div className="mb-8">
-                  <ExpenseAnalysis 
-                    expenses={expenses}
-                    categoryData={categoryData}
-                    currency={displayCurrency}
-                  />
-                </div>
               </>
             ) : (
-              <div className="glass-card p-8 mb-8 text-center">
-                <h2 className="text-xl font-medium mb-2">No Expenses Found</h2>
+              <div className="glass-card p-6 mb-5 text-center">
+                <h2 className="text-lg font-medium mb-2">No Expenses Found</h2>
                 <p className="text-muted-foreground mb-4">
                   Get started by adding your first expense using the "+ Add Expense" button.
                 </p>
@@ -537,11 +537,11 @@ export default function Index() {
               </div>
             )}
             
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Expenses</h2>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4 mr-1" />
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-bold">Expenses</h2>
+                <div className="flex items-center text-xs text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5 mr-1" />
                   Last updated: {new Date().toLocaleDateString()}
                 </div>
               </div>

@@ -63,9 +63,11 @@ function Calendar({
         
         // Handle the day selection properly based on the DayPicker mode
         if (props.mode === 'single' && typeof props.onSelect === 'function') {
-          // Call the onSelect handler with all required arguments
-          // DayPicker expects: (date, selectedDays, activeModifiers, e)
-          props.onSelect(adjustedDate, undefined, undefined, {} as any);
+          // Only create a mock event object to satisfy the expected function signature
+          const mockEvent = {} as any;
+          
+          // Call the onSelect handler with required arguments
+          props.onSelect(adjustedDate, undefined, undefined, mockEvent);
         }
       }}
       {...props}
