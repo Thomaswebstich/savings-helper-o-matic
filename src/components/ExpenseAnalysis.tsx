@@ -172,7 +172,7 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
               >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.2} />
                 <XAxis type="number" tickFormatter={(value) => formatCurrency(value, currency)} />
-                <YAxis type="category" dataKey="category" width={100} />
+                <YAxis type="category" dataKey="categoryName" width={100} />
                 <Tooltip 
                   formatter={formatTooltipValue}
                   contentStyle={{
@@ -194,9 +194,9 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
               <h3 className="text-sm font-medium mb-3">Top Categories</h3>
               <div className="space-y-3">
                 {filteredCategoryData.slice(0, 5).map(category => (
-                  <div key={category.category} className="flex items-center justify-between">
+                  <div key={category.categoryId} className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <CategoryBadge category={category.category} className="mr-2" />
+                      <CategoryBadge category={category.categoryName} className="mr-2" />
                       <span>{formatCurrency(category.amount, currency)}</span>
                     </div>
                     <div className="text-sm text-muted-foreground">
