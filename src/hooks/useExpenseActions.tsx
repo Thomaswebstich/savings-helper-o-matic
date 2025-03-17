@@ -16,22 +16,29 @@ interface UseExpenseActionsProps {
 }
 
 export function useExpenseActions({ expenses, setExpenses, categories }: UseExpenseActionsProps) {
+  const [currentExpense, setCurrentExpense] = useState<Expense | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  
   // Use the extracted hooks
-  const { isFormOpen, setIsFormOpen, handleCloseForm } = useExpenseForm();
   const { handleAddExpense } = useAddExpense({ expenses, setExpenses, categories });
-  const { currentExpense, setCurrentExpense, handleEditExpense, handleUpdateExpense } = 
-    useEditExpense({ expenses, setExpenses, categories });
+  const { handleEditExpense, handleUpdateExpense } = useEditExpense({ expenses, setExpenses, categories });
   const { handleDeleteExpense } = useDeleteExpense({ expenses, setExpenses });
+  
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setCurrentExpense(null);
+  };
   
   const handleFormSubmit = async (data: ExpenseFormValues) => {
     console.log("Form submitted with data:", data);
     
     if (currentExpense) {
       await handleUpdateExpense(data);
-      setCurrentExpense(null);
     } else {
       await handleAddExpense(data);
     }
+    
+    handleCloseForm();
   };
 
   return {
