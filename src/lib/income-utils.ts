@@ -81,8 +81,6 @@ export const updateIncomeSource = async (id: string, changes: Partial<Omit<Incom
   
   updatePayload.updated_at = new Date().toISOString();
   
-  console.log(`Updating income source ${id} with:`, updatePayload);
-  
   const { data, error } = await supabase
     .from('income_sources')
     .update(updatePayload)
@@ -123,31 +121,42 @@ export const calculateTotalMonthlyIncome = (incomeSources: IncomeSource[]): numb
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
+  const monthStart = new Date(currentYear, currentMonth, 1);
+  const monthEnd = new Date(currentYear, currentMonth + 1, 0);
   
   return incomeSources.reduce((total, income) => {
     // Skip if income hasn't started yet or has already ended
     const startDate = new Date(income.startDate);
     const endDate = income.endDate ? new Date(income.endDate) : null;
     
-    if (startDate > currentDate || (endDate && endDate < currentDate)) {
+    if (startDate > monthEnd || (endDate && endDate < monthStart)) {
       return total;
     }
     
     const amountInTHB = convertCurrency(income.amount, income.currency, "THB");
     
     if (income.isRecurring) {
-      if (income.recurrenceInterval === "monthly") {
-        return total + amountInTHB;
-      } else if (income.recurrenceInterval === "daily") {
-        return total + (amountInTHB * 30);
-      } else if (income.recurrenceInterval === "weekly") {
-        return total + (amountInTHB * 4.3);
-      } else if (income.recurrenceInterval === "yearly" && startDate.getMonth() === currentMonth) {
-        return total + amountInTHB;
+      switch (income.recurrenceInterval) {
+        case "monthly":
+          return total + amountInTHB;
+        case "daily":
+          return total + (amountInTHB * 30);
+        case "weekly":
+          return total + (amountInTHB * 4.3);
+        case "yearly":
+          if (startDate.getMonth() === currentMonth) {
+            return total + amountInTHB;
+          }
+          return total;
+        default:
+          return total + amountInTHB; // Default to monthly
       }
     } else {
       // One-time income that falls in the current month
-      if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
+      const incomeMonth = startDate.getMonth();
+      const incomeYear = startDate.getFullYear();
+      
+      if (incomeMonth === currentMonth && incomeYear === currentYear) {
         return total + amountInTHB;
       }
     }

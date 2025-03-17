@@ -30,7 +30,7 @@ export const calculateMonthlyTotals = (
       return sum + amountInTHB;
     }, 0);
     
-    // Calculate income taking start dates into account
+    // Calculate income for this specific month
     const monthlyIncome = calculateMonthIncomeForDate(incomeSources, monthStart);
     
     const savings = monthlyIncome - totalExpenses;
@@ -123,12 +123,15 @@ export const calculateMonthlyTotals = (
 
 // Helper function to calculate income for a specific month
 function calculateMonthIncomeForDate(incomeSources: IncomeSource[], monthDate: Date): number {
+  const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+  
   return incomeSources.reduce((total, income) => {
     // Skip if income hasn't started yet or has already ended
     const startDate = new Date(income.startDate);
     const endDate = income.endDate ? new Date(income.endDate) : null;
     
-    if (startDate > monthDate || (endDate && endDate < monthDate)) {
+    if (startDate > monthEnd || (endDate && endDate < monthStart)) {
       return total;
     }
     

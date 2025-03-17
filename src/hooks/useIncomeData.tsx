@@ -16,6 +16,7 @@ export function useIncomeData(displayCurrency: Currency = "THB") {
     async function fetchIncomeData() {
       try {
         const incomeData = await fetchIncomeSources();
+        console.log('Fetched income sources:', incomeData);
         setIncomeSources(incomeData);
       } catch (error) {
         console.error('Error fetching income sources:', error);
@@ -30,6 +31,7 @@ export function useIncomeData(displayCurrency: Currency = "THB") {
   const monthlyIncome = useMemo(() => {
     // Calculate total monthly income, including one-time incomes for current month
     const totalInTHB = calculateTotalMonthlyIncome(incomeSources);
+    console.log('Calculated monthly income in THB:', totalInTHB);
     return convertCurrency(totalInTHB, "THB", displayCurrency);
   }, [incomeSources, displayCurrency]);
 
