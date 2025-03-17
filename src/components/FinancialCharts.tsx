@@ -43,48 +43,14 @@ export function FinancialCharts({
   const visibleData = convertedMonthlyData.slice(visibleMonths.start, visibleMonths.end);
   const pieData = preparePieData(convertedCategoryData);
   
-  const showPrevious = () => {
-    if (visibleMonths.start > 0) {
-      setVisibleMonths({
-        start: visibleMonths.start - 1,
-        end: visibleMonths.end - 1
-      });
-    }
-  };
-  
-  const showNext = () => {
-    if (visibleMonths.end < convertedMonthlyData.length) {
-      setVisibleMonths({
-        start: visibleMonths.start + 1,
-        end: visibleMonths.end + 1
-      });
-    }
-  };
-  
-  const zoomIn = () => {
-    if (timeRange.monthsBack > 3) {
-      const newRange = {
-        monthsBack: timeRange.monthsBack - 1,
-        monthsForward: timeRange.monthsForward
-      };
-      setTimeRange(newRange);
-      if (onTimeRangeChange) {
-        onTimeRangeChange(newRange);
-      }
-    }
-  };
-  
-  const zoomOut = () => {
-    if (timeRange.monthsBack < 12) {
-      const newRange = {
-        monthsBack: timeRange.monthsBack + 1,
-        monthsForward: timeRange.monthsForward
-      };
-      setTimeRange(newRange);
-      if (onTimeRangeChange) {
-        onTimeRangeChange(newRange);
-      }
-    }
+  const handleSliderChange = (value: number[]) => {
+    const newStart = value[0];
+    const newEnd = Math.min(newStart + 12, convertedMonthlyData.length);
+    
+    setVisibleMonths({
+      start: newStart,
+      end: newEnd
+    });
   };
   
   const adjustProjection = (change: number) => {
@@ -116,10 +82,7 @@ export function FinancialCharts({
             timeRange={timeRange}
             visibleMonths={visibleMonths}
             totalDataLength={convertedMonthlyData.length}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            onShowPrevious={showPrevious}
-            onShowNext={showNext}
+            onSliderChange={handleSliderChange}
             onAdjustProjection={adjustProjection}
           />
         </div>
