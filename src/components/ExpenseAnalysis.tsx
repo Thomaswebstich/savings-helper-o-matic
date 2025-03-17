@@ -444,7 +444,7 @@ export function ExpenseAnalysis({
             <Clock className="w-3.5 h-3.5 mr-1.5" />
             Monthly
           </TabsTrigger>
-        </Tabs>
+        </TabsList>
         
         <TabsContent value="daily" className="mt-3">
           <div className="text-sm font-medium mb-2">Daily Cost by Category</div>
