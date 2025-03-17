@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { MonthlyTotal, CategoryTotal, formatCurrency, Currency, convertCurrency } from '@/lib/data';
+import { MonthlyTotal, CategoryTotal, formatCurrency, Currency, convertCurrency, CURRENCY_SYMBOLS } from '@/lib/data';
 import { 
   Area, 
   AreaChart, 
@@ -83,6 +83,7 @@ export function FinancialCharts({
       categoryId: "Other",
       categoryName: "Other",
       amount: otherAmount,
+      budget: undefined, // Add the budget property (undefined for "Other")
       percentage: convertedCategoryData
         .slice(5)
         .reduce((sum, category) => sum + category.percentage, 0),
@@ -415,4 +416,3 @@ export function FinancialCharts({
     </div>
   );
 }
-
