@@ -63,9 +63,9 @@ function Calendar({
         
         // Handle the day selection properly based on the DayPicker mode
         if (props.mode === 'single' && typeof props.onSelect === 'function') {
-          // Call the onSelect handler with the adjusted date only
-          // The react-day-picker expects a single Date parameter for single mode
-          props.onSelect(adjustedDate);
+          // Call the onSelect handler with all required arguments
+          // DayPicker expects: (date, selectedDays, activeModifiers, e)
+          props.onSelect(adjustedDate, undefined, undefined, {} as any);
         }
       }}
       {...props}
