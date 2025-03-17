@@ -174,7 +174,7 @@ export default function Index() {
         .insert({
           id: newExpense.id,
           description: newExpense.description,
-          amount: newExpense.amount,
+          amount: newExpense.amount.toString(), // Convert to string to fix type error
           date: newExpense.date.toISOString().split('T')[0],
           category: newExpense.category,
           is_recurring: newExpense.isRecurring,
@@ -226,7 +226,7 @@ export default function Index() {
           .from('expenses')
           .update({
             description: data.description,
-            amount: data.amount,
+            amount: data.amount.toString(), // Convert to string to fix type error
             date: data.date.toISOString().split('T')[0],
             category: data.category,
             is_recurring: data.isRecurring,
