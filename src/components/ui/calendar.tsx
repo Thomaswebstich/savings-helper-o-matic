@@ -62,10 +62,9 @@ function Calendar({
         adjustedDate.setHours(12, 0, 0, 0);
         
         // Handle the day selection properly based on the DayPicker mode
-        if (props.mode === 'single' && props.onSelect) {
-          // Instead of directly calling props.onSelect, we'll use the DayPicker's
-          // expected handler pattern which the component actually supports
-          props.onSelect(adjustedDate, undefined, undefined, { disabled: false });
+        if (props.mode === 'single' && typeof props.onSelect === 'function') {
+          // Call the onSelect handler with the adjusted date
+          props.onSelect(adjustedDate);
         }
       }}
       {...props}
