@@ -1,27 +1,58 @@
 
-import { MonthlyTotal, CURRENCY_SYMBOLS } from '@/lib/data';
+import { MonthlyTotal, CURRENCY_SYMBOLS, Expense, formatCurrency } from '@/lib/data';
 import { Currency } from '@/lib/types';
 import { 
   Area, 
   AreaChart, 
   CartesianGrid, 
   XAxis, 
-  YAxis
+  YAxis,
+  Scatter
 } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { formatTooltipValue, chartConfig } from './financialChartUtils';
+import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
+import { formatTooltipValue, chartConfig, getExpenseScatterData } from './financialChartUtils';
+import { Circle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface IncomeExpensesChartProps {
   visibleData: MonthlyTotal[];
   displayCurrency: Currency;
   hasFutureData: boolean;
+  expenses: Expense[];
 }
 
 export function IncomeExpensesChart({ 
   visibleData, 
   displayCurrency, 
-  hasFutureData 
+  hasFutureData,
+  expenses 
 }: IncomeExpensesChartProps) {
+  // Generate expense dots data
+  const expenseScatterData = getExpenseScatterData(expenses, visibleData, displayCurrency);
+
+  // Custom tooltip component for expense dots
+  const ExpenseTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const expense = payload[0].payload.originalExpense;
+      if (!expense) return null;
+
+      return (
+        <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
+          <p className="font-medium mb-1">{expense.description}</p>
+          <div className="flex justify-between gap-4">
+            <span>Date:</span>
+            <span className="font-medium">{new Date(expense.date).toLocaleDateString()}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span>Amount:</span>
+            <span className="font-medium">{formatCurrency(expense.amount, displayCurrency)}</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <>
       <div className="h-[250px]">
@@ -87,6 +118,42 @@ export function IncomeExpensesChart({
               fill="url(#expenseGradient)"
               strokeWidth={2}
               strokeDasharray={hasFutureData ? "4 4" : "0"}
+            />
+            
+            {/* Add expense dots */}
+            <Scatter 
+              data={expenseScatterData} 
+              fill="#f43f5e"
+              shape={(props) => {
+                const { cx, cy, payload } = props;
+                if (!cx || !cy) return null;
+                
+                // Only show tooltips for non-future expenses
+                if (!payload.isFuture) {
+                  return (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <circle 
+                            cx={cx} 
+                            cy={cy} 
+                            r={3} 
+                            fill="#f43f5e" 
+                            stroke="#ffffff" 
+                            strokeWidth={1}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs">
+                          <p className="font-medium">{payload.originalExpense.description}</p>
+                          <p>{formatCurrency(payload.originalExpense.amount, displayCurrency)}</p>
+                          <p>{new Date(payload.originalExpense.date).toLocaleDateString()}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                }
+                return null;
+              }}
             />
           </AreaChart>
         </ChartContainer>
