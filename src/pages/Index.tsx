@@ -6,35 +6,59 @@ import { ExpenseTable } from '@/components/ExpenseTable';
 import { FinancialCharts } from '@/components/FinancialCharts';
 import { SavingsProjection } from '@/components/SavingsProjection';
 import { ExpenseAnalysis } from '@/components/ExpenseAnalysis';
-import { IncomeEditor } from '@/components/IncomeEditor';
 import { 
   Expense, 
+  Category,
+  CategoryBudget,
+  IncomeSource,
   calculateMonthlyTotals, 
   calculateCategoryTotals, 
   formatCurrency,
   Currency,
   convertCurrency,
-  MONTHLY_INCOME,
+  fetchCategories,
+  fetchCategoryBudgets,
+  fetchIncomeSources,
+  calculateTotalMonthlyIncome,
 } from '@/lib/data';
 import { ExpenseForm, ExpenseFormValues } from '@/components/ExpenseForm';
-import { Banknote, Calendar, Coins, CreditCard, ReceiptText } from 'lucide-react';
+import { SettingsManager } from '@/components/SettingsManager';
+import { Banknote, Calendar, Coins, CreditCard, ReceiptText, Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Index() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [budgets, setBudgets] = useState<CategoryBudget[]>([]);
+  const [incomeSources, setIncomeSources] = useState<IncomeSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentExpense, setCurrentExpense] = useState<Expense | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState<Currency>("THB");
-  const [monthlyIncome, setMonthlyIncome] = useState<number>(MONTHLY_INCOME);
   const [timeRange, setTimeRange] = useState({ monthsBack: 6, monthsForward: 3 });
   
   useEffect(() => {
-    async function fetchExpenses() {
+    async function fetchData() {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        // Fetch categories first
+        const categoriesData = await fetchCategories();
+        setCategories(categoriesData);
+        
+        // Fetch current month budgets
+        const currentMonth = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        const budgetsData = await fetchCategoryBudgets(currentMonth);
+        setBudgets(budgetsData);
+        
+        // Fetch income sources
+        const incomeData = await fetchIncomeSources();
+        setIncomeSources(incomeData);
+        
+        // Fetch expenses
+        const { data: expensesData, error } = await supabase
           .from('expenses')
           .select('*')
           .order('date', { ascending: false });
@@ -43,13 +67,14 @@ export default function Index() {
           throw error;
         }
         
-        if (data && data.length > 0) {
-          const transformedExpenses: Expense[] = data.map(item => ({
+        if (expensesData && expensesData.length > 0) {
+          const transformedExpenses: Expense[] = expensesData.map(item => ({
             id: item.id,
             description: item.description,
             amount: Number(item.amount),
             date: new Date(item.date),
-            category: item.category as any,
+            categoryId: item.category_id || '', // Use the new categoryId field
+            category: item.category, // Keep for backward compatibility
             isRecurring: item.is_recurring || false,
             recurrenceInterval: item.recurrence_interval as any,
             stopDate: item.stop_date ? new Date(item.stop_date) : undefined,
@@ -66,10 +91,10 @@ export default function Index() {
           });
         }
       } catch (error) {
-        console.error('Error fetching expenses:', error);
+        console.error('Error fetching data:', error);
         toast({
           title: "Error",
-          description: "Failed to load expenses. Please try again later.",
+          description: "Failed to load data. Please try again later.",
           variant: "destructive"
         });
         setExpenses([]);
@@ -78,18 +103,48 @@ export default function Index() {
       }
     }
     
-    fetchExpenses();
+    fetchData();
   }, []);
+  
+  // Refetch when settings are updated
+  const refreshData = async () => {
+    try {
+      const [categoriesData, budgetsData, incomeData] = await Promise.all([
+        fetchCategories(),
+        fetchCategoryBudgets(new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })),
+        fetchIncomeSources()
+      ]);
+      
+      setCategories(categoriesData);
+      setBudgets(budgetsData);
+      setIncomeSources(incomeData);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
+  };
+  
+  const monthlyIncome = useMemo(() => {
+    return calculateTotalMonthlyIncome(incomeSources);
+  }, [incomeSources]);
   
   const monthlyData = useMemo(() => {
     if (expenses.length === 0) return [];
-    return calculateMonthlyTotals(expenses, monthlyIncome, timeRange.monthsBack, timeRange.monthsForward);
-  }, [expenses, monthlyIncome, timeRange]);
+    return calculateMonthlyTotals(expenses, incomeSources, timeRange.monthsBack, timeRange.monthsForward);
+  }, [expenses, incomeSources, timeRange]);
   
   const categoryData = useMemo(() => {
-    if (expenses.length === 0) return [];
-    return calculateCategoryTotals(expenses);
-  }, [expenses]);
+    if (expenses.length === 0 || categories.length === 0) return [];
+    const getCategoryTotals = async () => {
+      return await calculateCategoryTotals(expenses, categories, budgets);
+    };
+    
+    // Initialize with empty array and update asynchronously
+    const [data, setData] = useState<any[]>([]);
+    
+    getCategoryTotals().then(setData).catch(console.error);
+    
+    return data;
+  }, [expenses, categories, budgets]);
   
   const currentMonthData = useMemo(() => {
     if (monthlyData.length === 0) return null;
@@ -145,9 +200,19 @@ export default function Index() {
   }, [expenses, displayCurrency]);
   
   const handleAddExpense = async (data: ExpenseFormValues) => {
+    // Find category ID if we have a name
+    let categoryId = '';
+    if (data.category) {
+      const foundCategory = categories.find(c => c.name === data.category);
+      if (foundCategory) {
+        categoryId = foundCategory.id;
+      }
+    }
+    
     const newExpense: Expense = {
       id: crypto.randomUUID(),
-      ...data
+      ...data,
+      categoryId
     };
     
     setExpenses(prev => [newExpense, ...prev]);
@@ -160,6 +225,7 @@ export default function Index() {
           amount: newExpense.amount,
           date: newExpense.date.toISOString().split('T')[0],
           category: newExpense.category,
+          category_id: categoryId,
           is_recurring: newExpense.isRecurring,
           recurrence_interval: newExpense.recurrenceInterval,
           stop_date: newExpense.stopDate ? newExpense.stopDate.toISOString().split('T')[0] : null,
@@ -189,7 +255,20 @@ export default function Index() {
   
   const handleFormSubmit = async (data: ExpenseFormValues) => {
     if (currentExpense) {
-      const updatedExpense = { ...currentExpense, ...data };
+      // Find category ID if we have a name
+      let categoryId = '';
+      if (data.category) {
+        const foundCategory = categories.find(c => c.name === data.category);
+        if (foundCategory) {
+          categoryId = foundCategory.id;
+        }
+      }
+      
+      const updatedExpense = { 
+        ...currentExpense, 
+        ...data,
+        categoryId
+      };
       
       setExpenses(prev => 
         prev.map(exp => 
@@ -204,9 +283,10 @@ export default function Index() {
           .from('expenses')
           .update({
             description: data.description,
-            amount: data.amount, // Supabase will handle the number
+            amount: data.amount,
             date: data.date.toISOString().split('T')[0],
             category: data.category,
+            category_id: categoryId,
             is_recurring: data.isRecurring,
             recurrence_interval: data.recurrenceInterval,
             stop_date: data.stopDate ? data.stopDate.toISOString().split('T')[0] : null,
@@ -265,12 +345,9 @@ export default function Index() {
     setCurrentExpense(null);
   };
   
-  const handleIncomeChange = (newIncome: number) => {
-    setMonthlyIncome(newIncome);
-    toast({
-      title: "Income Updated",
-      description: `Monthly income set to ${formatCurrency(newIncome, displayCurrency)}`,
-    });
+  const handleCloseSettings = () => {
+    setIsSettingsOpen(false);
+    refreshData();
   };
   
   const handleTimeRangeChange = (newRange: { monthsBack: number, monthsForward: number }) => {
@@ -289,9 +366,20 @@ export default function Index() {
       />
       
       <main className="container mx-auto px-4 py-6">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-1">Financial Dashboard</h1>
-          <p className="text-muted-foreground">Track, analyze, and plan your personal finances</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold mb-1">Financial Dashboard</h1>
+            <p className="text-muted-foreground">Track, analyze, and plan your personal finances</p>
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setIsSettingsOpen(true)}
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Manage Settings
+          </Button>
         </div>
         
         {isLoading ? (
@@ -312,13 +400,7 @@ export default function Index() {
               />
               <DataCard
                 title="Monthly Income"
-                value={
-                  <IncomeEditor 
-                    income={currentMonthData ? currentMonthData.income : monthlyIncome} 
-                    currency={displayCurrency} 
-                    onIncomeChange={handleIncomeChange} 
-                  />
-                }
+                value={formatCurrency(monthlyIncome, displayCurrency)}
                 icon={<Banknote className="h-5 w-5" />}
               />
               <DataCard
@@ -367,15 +449,14 @@ export default function Index() {
                 <p className="text-muted-foreground mb-4">
                   Get started by adding your first expense using the "+ Add Expense" button.
                 </p>
-                <button 
+                <Button 
                   onClick={() => {
                     setCurrentExpense(null);
                     setIsFormOpen(true);
                   }}
-                  className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
                 >
                   Add Your First Expense
-                </button>
+                </Button>
               </div>
             )}
             
@@ -388,7 +469,8 @@ export default function Index() {
                 </div>
               </div>
               <ExpenseTable 
-                expenses={expenses} 
+                expenses={expenses}
+                categories={categories}
                 onAddExpense={() => {
                   setCurrentExpense(null);
                   setIsFormOpen(true);
@@ -406,6 +488,12 @@ export default function Index() {
         onClose={handleCloseForm} 
         onSubmit={handleFormSubmit}
         initialValues={currentExpense}
+        categories={categories}
+      />
+      
+      <SettingsManager
+        open={isSettingsOpen}
+        onClose={handleCloseSettings}
       />
     </div>
   );

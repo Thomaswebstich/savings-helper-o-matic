@@ -9,10 +9,73 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      categories: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          icon: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      category_budgets: {
+        Row: {
+          amount: number
+          category_id: string
+          created_at: string
+          currency: string
+          id: string
+          month: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          month: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          month?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
           category: string
+          category_id: string | null
           created_at: string | null
           currency: string | null
           date: string
@@ -26,6 +89,7 @@ export type Database = {
         Insert: {
           amount: number
           category: string
+          category_id?: string | null
           created_at?: string | null
           currency?: string | null
           date: string
@@ -39,6 +103,7 @@ export type Database = {
         Update: {
           amount?: number
           category?: string
+          category_id?: string | null
           created_at?: string | null
           currency?: string | null
           date?: string
@@ -48,6 +113,45 @@ export type Database = {
           recurrence_interval?: string | null
           stop_date?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      income_sources: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          description: string
+          end_date: string | null
+          id: string
+          is_recurring: boolean
+          recurrence_interval: string | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          description: string
+          end_date?: string | null
+          id?: string
+          is_recurring?: boolean
+          recurrence_interval?: string | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          description?: string
+          end_date?: string | null
+          id?: string
+          is_recurring?: boolean
+          recurrence_interval?: string | null
+          start_date?: string
+          updated_at?: string
         }
         Relationships: []
       }

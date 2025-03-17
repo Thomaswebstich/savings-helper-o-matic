@@ -1,26 +1,42 @@
 
 import { addDays, format, subDays, subMonths } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 export type Currency = "THB" | "USD" | "EUR";
 
-export type Category = 
-  | "Housing" 
-  | "Transportation" 
-  | "Food" 
-  | "Utilities" 
-  | "Insurance" 
-  | "Healthcare" 
-  | "Saving" 
-  | "Personal" 
-  | "Entertainment" 
-  | "Other";
+export type Category = {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+};
+
+export type CategoryBudget = {
+  id: string;
+  categoryId: string;
+  amount: number;
+  currency: Currency;
+  month: string; // Format: "MMM yyyy" (e.g., "Jan 2023")
+};
+
+export type IncomeSource = {
+  id: string;
+  description: string;
+  amount: number;
+  currency: Currency;
+  isRecurring: boolean;
+  recurrenceInterval?: "daily" | "weekly" | "monthly" | "yearly";
+  startDate: Date;
+  endDate?: Date;
+};
 
 export type Expense = {
   id: string;
   amount: number;
   description: string;
   date: Date;
-  category: Category;
+  categoryId: string;
+  category?: string; // For backward compatibility
   isRecurring: boolean;
   recurrenceInterval?: "daily" | "weekly" | "monthly" | "yearly";
   stopDate?: Date;
@@ -35,9 +51,12 @@ export type MonthlyTotal = {
 };
 
 export type CategoryTotal = {
-  category: Category;
+  categoryId: string;
+  categoryName: string;
   amount: number;
   percentage: number;
+  budget?: number;
+  color: string;
 };
 
 // Currency exchange rates (relative to THB as base)
@@ -53,52 +72,312 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   EUR: "€"
 };
 
-export const CATEGORIES: Category[] = [
-  "Housing",
-  "Transportation",
-  "Food",
-  "Utilities",
-  "Insurance",
-  "Healthcare",
-  "Saving",
-  "Personal",
-  "Entertainment",
-  "Other"
+export const CATEGORY_ICONS = [
+  "home", "car", "utensils", "plug", "shield", "heart-pulse", 
+  "piggy-bank", "user", "tv", "briefcase", "gift", "book",
+  "coffee", "shopping-bag", "plane", "wifi", "phone", "umbrella",
+  "school", "music", "credit-card", "more-horizontal"
 ];
 
-export const CATEGORY_ICONS: Record<Category, string> = {
-  Housing: "home",
-  Transportation: "car",
-  Food: "utensils",
-  Utilities: "plug",
-  Insurance: "shield",
-  Healthcare: "heart-pulse",
-  Saving: "piggy-bank",
-  Personal: "user",
-  Entertainment: "tv",
-  Other: "more-horizontal"
+// Function to fetch all categories from the database
+export const fetchCategories = async (): Promise<Category[]> => {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .order('name');
+    
+  if (error) {
+    console.error('Error fetching categories:', error);
+    throw error;
+  }
+  
+  return data || [];
 };
 
-export const CATEGORY_COLORS: Record<Category, string> = {
-  Housing: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300",
-  Transportation: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-300",
-  Food: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-300",
-  Utilities: "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-300",
-  Insurance: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300",
-  Healthcare: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300",
-  Saving: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300",
-  Personal: "bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300",
-  Entertainment: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300",
-  Other: "bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-300"
+// Function to add a new category
+export const addCategory = async (category: Omit<Category, 'id'>): Promise<Category> => {
+  const { data, error } = await supabase
+    .from('categories')
+    .insert(category)
+    .select()
+    .single();
+    
+  if (error) {
+    console.error('Error adding category:', error);
+    throw error;
+  }
+  
+  return data;
 };
 
-// Default monthly income
-export let MONTHLY_INCOME = 5000;
+// Function to update a category
+export const updateCategory = async (id: string, changes: Partial<Omit<Category, 'id'>>): Promise<Category> => {
+  const { data, error } = await supabase
+    .from('categories')
+    .update(changes)
+    .eq('id', id)
+    .select()
+    .single();
+    
+  if (error) {
+    console.error('Error updating category:', error);
+    throw error;
+  }
+  
+  return data;
+};
 
-// Calculate monthly totals with custom income and time range
+// Function to delete a category
+export const deleteCategory = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('categories')
+    .delete()
+    .eq('id', id);
+    
+  if (error) {
+    console.error('Error deleting category:', error);
+    throw error;
+  }
+};
+
+// Function to fetch category budgets
+export const fetchCategoryBudgets = async (month?: string): Promise<CategoryBudget[]> => {
+  let query = supabase
+    .from('category_budgets')
+    .select('*');
+    
+  if (month) {
+    query = query.eq('month', month);
+  }
+  
+  const { data, error } = await query;
+    
+  if (error) {
+    console.error('Error fetching category budgets:', error);
+    throw error;
+  }
+  
+  return data.map(item => ({
+    id: item.id,
+    categoryId: item.category_id,
+    amount: Number(item.amount),
+    currency: item.currency as Currency,
+    month: item.month
+  })) || [];
+};
+
+// Function to set a category budget
+export const setCategoryBudget = async (budget: Omit<CategoryBudget, 'id'>): Promise<CategoryBudget> => {
+  // Check if a budget already exists for this category and month
+  const { data: existingBudget } = await supabase
+    .from('category_budgets')
+    .select('id')
+    .eq('category_id', budget.categoryId)
+    .eq('month', budget.month)
+    .maybeSingle();
+    
+  let result;
+  
+  if (existingBudget) {
+    // Update existing budget
+    const { data, error } = await supabase
+      .from('category_budgets')
+      .update({
+        amount: budget.amount,
+        currency: budget.currency,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingBudget.id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error updating category budget:', error);
+      throw error;
+    }
+    
+    result = data;
+  } else {
+    // Insert new budget
+    const { data, error } = await supabase
+      .from('category_budgets')
+      .insert({
+        category_id: budget.categoryId,
+        amount: budget.amount,
+        currency: budget.currency,
+        month: budget.month
+      })
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error adding category budget:', error);
+      throw error;
+    }
+    
+    result = data;
+  }
+  
+  return {
+    id: result.id,
+    categoryId: result.category_id,
+    amount: Number(result.amount),
+    currency: result.currency as Currency,
+    month: result.month
+  };
+};
+
+// Function to delete a category budget
+export const deleteCategoryBudget = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('category_budgets')
+    .delete()
+    .eq('id', id);
+    
+  if (error) {
+    console.error('Error deleting category budget:', error);
+    throw error;
+  }
+};
+
+// Function to fetch income sources
+export const fetchIncomeSources = async (): Promise<IncomeSource[]> => {
+  const { data, error } = await supabase
+    .from('income_sources')
+    .select('*')
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error('Error fetching income sources:', error);
+    throw error;
+  }
+  
+  return data.map(item => ({
+    id: item.id,
+    description: item.description,
+    amount: Number(item.amount),
+    currency: item.currency as Currency,
+    isRecurring: item.is_recurring,
+    recurrenceInterval: item.recurrence_interval as any,
+    startDate: new Date(item.start_date),
+    endDate: item.end_date ? new Date(item.end_date) : undefined
+  })) || [];
+};
+
+// Function to add a new income source
+export const addIncomeSource = async (income: Omit<IncomeSource, 'id'>): Promise<IncomeSource> => {
+  const { data, error } = await supabase
+    .from('income_sources')
+    .insert({
+      description: income.description,
+      amount: income.amount,
+      currency: income.currency,
+      is_recurring: income.isRecurring,
+      recurrence_interval: income.recurrenceInterval,
+      start_date: income.startDate.toISOString().split('T')[0],
+      end_date: income.endDate ? income.endDate.toISOString().split('T')[0] : null
+    })
+    .select()
+    .single();
+    
+  if (error) {
+    console.error('Error adding income source:', error);
+    throw error;
+  }
+  
+  return {
+    id: data.id,
+    description: data.description,
+    amount: Number(data.amount),
+    currency: data.currency as Currency,
+    isRecurring: data.is_recurring,
+    recurrenceInterval: data.recurrence_interval as any,
+    startDate: new Date(data.start_date),
+    endDate: data.end_date ? new Date(data.end_date) : undefined
+  };
+};
+
+// Function to update an income source
+export const updateIncomeSource = async (id: string, changes: Partial<Omit<IncomeSource, 'id'>>): Promise<IncomeSource> => {
+  const updatePayload: any = {};
+  
+  if (changes.description !== undefined) updatePayload.description = changes.description;
+  if (changes.amount !== undefined) updatePayload.amount = changes.amount;
+  if (changes.currency !== undefined) updatePayload.currency = changes.currency;
+  if (changes.isRecurring !== undefined) updatePayload.is_recurring = changes.isRecurring;
+  if (changes.recurrenceInterval !== undefined) updatePayload.recurrence_interval = changes.recurrenceInterval;
+  if (changes.startDate !== undefined) updatePayload.start_date = changes.startDate.toISOString().split('T')[0];
+  if (changes.endDate !== undefined) updatePayload.end_date = changes.endDate.toISOString().split('T')[0];
+  
+  updatePayload.updated_at = new Date().toISOString();
+  
+  const { data, error } = await supabase
+    .from('income_sources')
+    .update(updatePayload)
+    .eq('id', id)
+    .select()
+    .single();
+    
+  if (error) {
+    console.error('Error updating income source:', error);
+    throw error;
+  }
+  
+  return {
+    id: data.id,
+    description: data.description,
+    amount: Number(data.amount),
+    currency: data.currency as Currency,
+    isRecurring: data.is_recurring,
+    recurrenceInterval: data.recurrence_interval as any,
+    startDate: new Date(data.start_date),
+    endDate: data.end_date ? new Date(data.end_date) : undefined
+  };
+};
+
+// Function to delete an income source
+export const deleteIncomeSource = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('income_sources')
+    .delete()
+    .eq('id', id);
+    
+  if (error) {
+    console.error('Error deleting income source:', error);
+    throw error;
+  }
+};
+
+// Convert amount from one currency to another
+export const convertCurrency = (amount: number, fromCurrency: Currency, toCurrency: Currency): number => {
+  if (fromCurrency === toCurrency) return amount;
+  
+  // Convert to THB first (our base currency)
+  const amountInTHB = fromCurrency === "THB" ? amount : amount / EXCHANGE_RATES[fromCurrency];
+  
+  // Then convert from THB to target currency
+  return toCurrency === "THB" ? amountInTHB : amountInTHB * EXCHANGE_RATES[toCurrency];
+};
+
+// Calculate total monthly income from all income sources
+export const calculateTotalMonthlyIncome = (incomeSources: IncomeSource[]): number => {
+  return incomeSources.reduce((total, income) => {
+    // Convert all to THB for consistency
+    const amountInTHB = convertCurrency(income.amount, income.currency, "THB");
+    
+    // Only include recurring income for now (simplified)
+    if (income.isRecurring && income.recurrenceInterval === "monthly") {
+      return total + amountInTHB;
+    }
+    
+    return total;
+  }, 0);
+};
+
+// Calculate monthly totals with income sources and time range
 export const calculateMonthlyTotals = (
-  expenses: Expense[], 
-  monthlyIncome = MONTHLY_INCOME,
+  expenses: Expense[],
+  incomeSources: IncomeSource[],
   monthsBack = 6, 
   monthsForward = 3
 ): MonthlyTotal[] => {
@@ -122,6 +401,9 @@ export const calculateMonthlyTotals = (
       const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
       return sum + amountInTHB;
     }, 0);
+    
+    // Calculate income for this month (simplified to monthly recurring for now)
+    const monthlyIncome = calculateTotalMonthlyIncome(incomeSources);
     
     // Calculate savings (income - expenses)
     const savings = monthlyIncome - totalExpenses;
@@ -171,6 +453,9 @@ export const calculateMonthlyTotals = (
     // Calculate total projected expenses
     const projectedExpenses = monthlyRecurringTotal + monthlyFromWeekly + averageNonRecurring;
     
+    // Calculate monthly income (simplified to monthly recurring for now)
+    const monthlyIncome = calculateTotalMonthlyIncome(incomeSources);
+    
     // Calculate projected savings
     const projectedSavings = monthlyIncome - projectedExpenses;
     
@@ -185,19 +470,20 @@ export const calculateMonthlyTotals = (
   return result;
 };
 
-// Convert amount from one currency to another
-export const convertCurrency = (amount: number, fromCurrency: Currency, toCurrency: Currency): number => {
-  if (fromCurrency === toCurrency) return amount;
+// Calculate totals by category with budget information
+export const calculateCategoryTotals = async (
+  expenses: Expense[],
+  categories: Category[],
+  budgets: CategoryBudget[] = []
+): Promise<CategoryTotal[]> => {
+  // Build a map for quick category lookups
+  const categoryMap = new Map<string, Category>();
+  categories.forEach(cat => categoryMap.set(cat.id, cat));
   
-  // Convert to THB first (our base currency)
-  const amountInTHB = fromCurrency === "THB" ? amount : amount / EXCHANGE_RATES[fromCurrency];
+  // Build a map for quick budget lookups
+  const budgetMap = new Map<string, number>();
+  budgets.forEach(budget => budgetMap.set(budget.categoryId, budget.amount));
   
-  // Then convert from THB to target currency
-  return toCurrency === "THB" ? amountInTHB : amountInTHB * EXCHANGE_RATES[toCurrency];
-};
-
-// Calculate totals by category
-export const calculateCategoryTotals = (expenses: Expense[]): CategoryTotal[] => {
   // Calculate total expenses (convert all to THB for consistency)
   const totalExpenses = expenses.reduce((sum, exp) => {
     const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
@@ -205,23 +491,50 @@ export const calculateCategoryTotals = (expenses: Expense[]): CategoryTotal[] =>
   }, 0);
   
   // Group by category and calculate totals
-  const categoryTotals = CATEGORIES.map(category => {
-    const categoryExpenses = expenses.filter(exp => exp.category === category);
-    const amount = categoryExpenses.reduce((sum, exp) => {
-      const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
-      return sum + amountInTHB;
-    }, 0);
-    const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0;
+  const categoryTotals = new Map<string, { amount: number, name: string, color: string }>();
+  
+  expenses.forEach(expense => {
+    if (!expense.categoryId) return;
     
-    return {
-      category,
-      amount,
-      percentage
-    };
+    const category = categoryMap.get(expense.categoryId);
+    if (!category) return;
+    
+    const amountInTHB = convertCurrency(expense.amount, expense.currency, "THB");
+    
+    if (categoryTotals.has(expense.categoryId)) {
+      const current = categoryTotals.get(expense.categoryId)!;
+      categoryTotals.set(expense.categoryId, { 
+        ...current,
+        amount: current.amount + amountInTHB
+      });
+    } else {
+      categoryTotals.set(expense.categoryId, { 
+        amount: amountInTHB,
+        name: category.name,
+        color: category.color
+      });
+    }
+  });
+  
+  // Convert to array and calculate percentages
+  const result: CategoryTotal[] = [];
+  
+  categoryTotals.forEach((value, categoryId) => {
+    const percentage = totalExpenses > 0 ? (value.amount / totalExpenses) * 100 : 0;
+    const budget = budgetMap.get(categoryId);
+    
+    result.push({
+      categoryId,
+      categoryName: value.name,
+      amount: value.amount,
+      percentage,
+      budget,
+      color: value.color
+    });
   });
   
   // Sort by amount (highest first)
-  return categoryTotals.sort((a, b) => b.amount - a.amount);
+  return result.sort((a, b) => b.amount - a.amount);
 };
 
 // Format currency number to string based on the specified currency
