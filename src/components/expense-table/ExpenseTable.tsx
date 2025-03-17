@@ -7,11 +7,13 @@ import { ExpenseProjectionToggle } from './ExpenseProjectionToggle';
 import { generateProjectedExpenses } from './expense-utils';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, BarChart4, PieChart } from 'lucide-react';
 import { useSortExpenses } from './hooks/useSortExpenses';
 import { useExpandedMonths } from './hooks/useExpandedMonths';
 import { useExpenseFilters } from './hooks/useExpenseFilters';
 import { filterExpense, groupExpensesByMonth, getCategoryColor } from './utils/expense-filter-utils';
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface ExpenseTableProps {
   expenses: Expense[];
@@ -19,6 +21,7 @@ interface ExpenseTableProps {
   onAddExpense?: () => void;
   onEditExpense?: (expense: Expense) => void;
   onDeleteExpense?: (id: string) => void;
+  monthlyIncome?: number;
 }
 
 export function ExpenseTable({ 
@@ -26,15 +29,17 @@ export function ExpenseTable({
   categories, 
   onAddExpense, 
   onEditExpense, 
-  onDeleteExpense 
+  onDeleteExpense,
+  monthlyIncome = 0
 }: ExpenseTableProps) {
   // Use our custom hooks
   const { sortConfig, requestSort, getSortIcon } = useSortExpenses();
   const { expandedMonths, toggleMonthExpansion, isMonthExpanded } = useExpandedMonths();
   const { search, setSearch, selectedCategories, toggleCategory, clearFilters } = useExpenseFilters();
   
-  // State for projections
+  // State for projections and stacked bar toggle
   const [showProjections, setShowProjections] = useState(true);
+  const [showAgainstIncome, setShowAgainstIncome] = useState(false);
   
   // Create a category map for easier lookups
   const categoryMap = useMemo(() => {
@@ -73,6 +78,11 @@ export function ExpenseTable({
     setShowProjections(prev => !prev);
   };
 
+  // Toggle showing expenses against income
+  const toggleShowAgainstIncome = () => {
+    setShowAgainstIncome(prev => !prev);
+  };
+
   return (
     <div className="overflow-hidden rounded-xl border border-border animate-fade-in">
       <div className="bg-muted/50 px-4 py-2 flex flex-col md:flex-row gap-2 justify-between items-start md:items-center">
@@ -91,6 +101,20 @@ export function ExpenseTable({
             showProjections={showProjections}
             toggleProjections={toggleProjections}
           />
+          
+          {monthlyIncome > 0 && (
+            <div className="flex items-center gap-2 border-l border-border pl-2">
+              <Switch
+                id="income-toggle"
+                checked={showAgainstIncome}
+                onCheckedChange={toggleShowAgainstIncome}
+              />
+              <Label htmlFor="income-toggle" className="text-xs cursor-pointer flex items-center gap-1">
+                <BarChart4 className="h-3.5 w-3.5" />
+                Against income
+              </Label>
+            </div>
+          )}
           
           {onAddExpense && (
             <Button size="sm" className="h-9" onClick={onAddExpense}>
@@ -122,6 +146,8 @@ export function ExpenseTable({
                 onEditExpense={onEditExpense}
                 onDeleteExpense={onDeleteExpense}
                 getCategoryColor={getCategoryColor}
+                showAgainstIncome={showAgainstIncome}
+                monthlyIncome={monthlyIncome}
               />
             ))}
           </div>

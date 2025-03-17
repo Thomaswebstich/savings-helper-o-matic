@@ -1,5 +1,4 @@
 
-import { Category } from '@/lib/data';
 import { StackedBar } from '@/components/ui/stacked-bar';
 import { extractColorFromClass } from '@/components/expense-analysis/utils/category-breakdown-utils';
 
@@ -8,19 +7,24 @@ interface ExpenseMonthStackedBarProps {
   total: number;
   categoryMap: Map<string, Category>;
   getCategoryColor: (categoryId: string) => string;
+  showAgainstIncome?: boolean;
+  monthlyIncome?: number;
 }
 
 export function ExpenseMonthStackedBar({
   categoryTotals,
   total,
   categoryMap,
-  getCategoryColor
+  getCategoryColor,
+  showAgainstIncome = false,
+  monthlyIncome = 0
 }: ExpenseMonthStackedBarProps) {
   if (categoryTotals.size === 0) return null;
   
   // Prepare data for stacked bar chart
   const getStackedBarData = () => {
-    const totalAmount = total;
+    // If showing against income, use income as the total amount for percentages
+    const totalAmount = showAgainstIncome && monthlyIncome > 0 ? monthlyIncome : total;
     
     return Array.from(categoryTotals.entries())
       .sort((a, b) => b[1] - a[1]) // Sort by amount (highest first)
@@ -75,6 +79,12 @@ export function ExpenseMonthStackedBar({
             );
           })
         }
+        
+        {showAgainstIncome && monthlyIncome > 0 && (
+          <span className="ml-auto text-muted-foreground">
+            % of monthly income
+          </span>
+        )}
       </div>
     </div>
   );

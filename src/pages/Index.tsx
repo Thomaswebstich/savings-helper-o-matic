@@ -112,6 +112,7 @@ export default function Index() {
               onAddExpense={handleOpenAddExpenseForm}
               onEditExpense={handleEditExpense}
               onDeleteExpense={handleDeleteExpense}
+              monthlyIncome={monthlyIncome}
             />
           </>
         )}

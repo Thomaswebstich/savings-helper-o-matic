@@ -1,14 +1,15 @@
 
-import { Calendar } from 'lucide-react';
-import { ExpenseTable } from '@/components/expense-table';
 import { Expense, Category } from '@/lib/data';
+import { ExpenseTable } from '@/components/expense-table';
+import { Separator } from '@/components/ui/separator';
 
 interface ExpenseTableWrapperProps {
   expenses: Expense[];
   categories: Category[];
-  onAddExpense: () => void;
-  onEditExpense: (expense: Expense) => void;
-  onDeleteExpense: (id: string) => void;
+  onAddExpense?: () => void;
+  onEditExpense?: (expense: Expense) => void;
+  onDeleteExpense?: (id: string) => void;
+  monthlyIncome?: number;
 }
 
 export function ExpenseTableWrapper({
@@ -16,23 +17,20 @@ export function ExpenseTableWrapper({
   categories,
   onAddExpense,
   onEditExpense,
-  onDeleteExpense
+  onDeleteExpense,
+  monthlyIncome
 }: ExpenseTableWrapperProps) {
   return (
-    <div className="mb-5">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-bold">Expenses</h2>
-        <div className="flex items-center text-xs text-muted-foreground">
-          <Calendar className="h-3.5 w-3.5 mr-1" />
-          Last updated: {new Date().toLocaleDateString()}
-        </div>
-      </div>
-      <ExpenseTable 
+    <div className="mt-5">
+      <h2 className="font-semibold text-lg mb-3">Transaction History</h2>
+      <Separator className="mb-3" />
+      <ExpenseTable
         expenses={expenses}
         categories={categories}
         onAddExpense={onAddExpense}
         onEditExpense={onEditExpense}
         onDeleteExpense={onDeleteExpense}
+        monthlyIncome={monthlyIncome}
       />
     </div>
   );

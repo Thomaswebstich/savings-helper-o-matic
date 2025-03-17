@@ -26,6 +26,8 @@ interface ExpenseMonthGroupProps {
   onEditExpense?: (expense: Expense) => void;
   onDeleteExpense?: (id: string) => void;
   getCategoryColor: (categoryId: string) => string;
+  showAgainstIncome?: boolean;
+  monthlyIncome?: number;
 }
 
 export function ExpenseMonthGroup({
@@ -37,7 +39,9 @@ export function ExpenseMonthGroup({
   requestSort,
   onEditExpense,
   onDeleteExpense,
-  getCategoryColor
+  getCategoryColor,
+  showAgainstIncome = false,
+  monthlyIncome = 0
 }: ExpenseMonthGroupProps) {
   
   return (
@@ -62,6 +66,8 @@ export function ExpenseMonthGroup({
               total={group.total}
               categoryMap={categoryMap}
               getCategoryColor={getCategoryColor}
+              showAgainstIncome={showAgainstIncome}
+              monthlyIncome={monthlyIncome}
             />
           )}
         </div>
