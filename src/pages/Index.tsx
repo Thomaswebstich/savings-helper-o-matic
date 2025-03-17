@@ -98,6 +98,7 @@ export default function Index() {
                   expenses={expenses}
                   monthlyData={monthlyData}
                   categoryData={categoryData}
+                  categories={categories}
                   displayCurrency={displayCurrency}
                   timeRange={timeRange}
                   onTimeRangeChange={handleTimeRangeChange}

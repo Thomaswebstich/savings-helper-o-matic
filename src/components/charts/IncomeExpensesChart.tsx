@@ -1,5 +1,6 @@
 
-import { MonthlyTotal, CURRENCY_SYMBOLS } from '@/lib/data';
+import { useRef, useState, useEffect } from 'react';
+import { Expense, MonthlyTotal, CURRENCY_SYMBOLS, Category } from '@/lib/data';
 import { Currency } from '@/lib/types';
 import { 
   Area, 
@@ -10,21 +11,82 @@ import {
 } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { formatTooltipValue, chartConfig } from './financialChartUtils';
+import { prepareExpenseHotspots } from '@/lib/calculation-utils';
+import { ExpenseHotspots } from './ExpenseHotspots';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface IncomeExpensesChartProps {
   visibleData: MonthlyTotal[];
   displayCurrency: Currency;
   hasFutureData: boolean;
+  expenses?: Expense[];
+  categories?: Category[];
 }
 
 export function IncomeExpensesChart({ 
   visibleData, 
   displayCurrency, 
-  hasFutureData 
+  hasFutureData,
+  expenses = [],
+  categories = []
 }: IncomeExpensesChartProps) {
+  const [showHotspots, setShowHotspots] = useState(false);
+  const [chartDimensions, setChartDimensions] = useState({ width: 0, height: 0 });
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  // Update chart dimensions when component mounts or window resizes
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (chartRef.current) {
+        const { width, height } = chartRef.current.getBoundingClientRect();
+        setChartDimensions({ width, height });
+      }
+    };
+    
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, []);
+
+  // Prepare hotspot data
+  const hotspots = showHotspots ? prepareExpenseHotspots(expenses, visibleData) : [];
+  
+  // Helper functions for the hotspots component
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : 'Other';
+  };
+  
+  const getCategoryColor = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category?.color || '#94a3b8';
+  };
+
   return (
     <>
-      <div className="h-[250px]">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="show-hotspots"
+            checked={showHotspots}
+            onCheckedChange={setShowHotspots}
+          />
+          <Label htmlFor="show-hotspots" className="text-xs">Show Expense Hotspots</Label>
+        </div>
+        
+        {hasFutureData && (
+          <div className="text-xs text-muted-foreground flex items-center">
+            <hr className="w-4 border-dashed border-muted-foreground" />
+            <span className="mx-2">Dashed line indicates projected expenses</span>
+          </div>
+        )}
+      </div>
+      
+      <div className="h-[250px] relative" ref={chartRef}>
         <ChartContainer config={chartConfig}>
           <AreaChart data={visibleData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
             <defs>
@@ -90,13 +152,19 @@ export function IncomeExpensesChart({
             />
           </AreaChart>
         </ChartContainer>
+        
+        {/* Render hotspots on top of the chart */}
+        {showHotspots && hotspots.length > 0 && (
+          <ExpenseHotspots 
+            hotspots={hotspots}
+            displayCurrency={displayCurrency}
+            containerWidth={chartDimensions.width}
+            containerHeight={chartDimensions.height}
+            getCategoryName={getCategoryName}
+            getCategoryColor={getCategoryColor}
+          />
+        )}
       </div>
-      {hasFutureData && (
-        <div className="text-xs text-muted-foreground mt-1 flex items-center">
-          <hr className="w-4 border-dashed border-muted-foreground" />
-          <span className="mx-2">Dashed line indicates projected expenses</span>
-        </div>
-      )}
     </>
   );
 }

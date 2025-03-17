@@ -1,26 +1,37 @@
 
-import { Expense, Currency } from '@/lib/data';
+import { useState } from 'react';
+import { FinancialCharts } from '@/components/FinancialCharts';
+import { MonthlyTotal, CategoryTotal, Expense, Category, Currency } from '@/lib/data';
 
 interface ChartsContainerProps {
   expenses: Expense[];
-  monthlyData: any[];
-  categoryData: any[];
+  monthlyData: MonthlyTotal[];
+  categoryData: CategoryTotal[];
+  categories: Category[];
   displayCurrency: Currency;
   timeRange: { monthsBack: number, monthsForward: number };
-  onTimeRangeChange: (newRange: { monthsBack: number, monthsForward: number }) => void;
+  onTimeRangeChange?: (range: { monthsBack: number, monthsForward: number }) => void;
 }
 
 export function ChartsContainer({
   expenses,
   monthlyData,
   categoryData,
+  categories,
   displayCurrency,
   timeRange,
   onTimeRangeChange
 }: ChartsContainerProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 mb-5">
-      {/* Charts removed as requested */}
+    <div className="mt-4 mb-5">
+      <FinancialCharts
+        monthlyData={monthlyData}
+        categoryData={categoryData}
+        expenses={expenses}
+        categories={categories}
+        onTimeRangeChange={onTimeRangeChange}
+        displayCurrency={displayCurrency}
+      />
     </div>
   );
 }
