@@ -10,16 +10,16 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon, Check, X } from 'lucide-react';
+import { CalendarIcon, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Expense, Category, Currency, EXCHANGE_RATES } from '@/lib/data';
+import { Expense, Category, Currency } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 // Define the form values type
 export type ExpenseFormValues = Omit<Expense, 'id'>;
 
-// Create a schema for string categories
+// Create a schema for form validation
 const formSchema = z.object({
   description: z.string().min(1, { message: 'Description is required' }),
   amount: z.number().min(0.01, { message: 'Amount must be greater than 0' }),
@@ -70,8 +70,8 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
           : new Date(initialValues.stopDate);
       }
       
-      // Use categoryId directly if available
-      let categoryValue = initialValues.categoryId || '';
+      // Use categoryId directly for the category field
+      const categoryValue = initialValues.categoryId || '';
       
       console.log("Prepared date:", expenseDate);
       console.log("Prepared stop date:", stopDate);
@@ -99,12 +99,23 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
         currency: 'THB'
       });
     }
-  }, [initialValues, form, open, categories]);
+  }, [initialValues, form, open]);
   
   // Handle form submission
   const handleSubmit = (values: ExpenseFormValues) => {
-    console.log("Submitting form with values:", values);
-    onSubmit(values);
+    console.log("Form submitting with values:", values);
+    
+    // Make sure date is a valid Date object
+    const submissionValues: ExpenseFormValues = {
+      ...values,
+      date: values.date instanceof Date ? values.date : new Date(values.date),
+      stopDate: values.stopDate ? 
+        (values.stopDate instanceof Date ? values.stopDate : new Date(values.stopDate)) 
+        : undefined
+    };
+    
+    console.log("Formatted submission values:", submissionValues);
+    onSubmit(submissionValues);
     onClose();
   };
 
@@ -215,9 +226,14 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                         <Calendar
                           mode="single"
                           selected={field.value}
-                          onSelect={field.onChange}
+                          onSelect={(date) => {
+                            console.log("Calendar date selected:", date);
+                            field.onChange(date);
+                          }}
                           initialFocus
-                          className="pointer-events-auto"
+                          captionLayout="dropdown-buttons"
+                          fromYear={2020}
+                          toYear={2030}
                         />
                       </PopoverContent>
                     </Popover>
@@ -233,8 +249,10 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                   <FormItem>
                     <FormLabel>Category</FormLabel>
                     <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
+                      onValueChange={(value) => {
+                        console.log("Category selected:", value);
+                        field.onChange(value);
+                      }}
                       value={field.value}
                     >
                       <FormControl>
@@ -264,7 +282,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Recurring Expense</FormLabel>
                     <FormDescription>
-                      Is this a recurring payment?
+                      Is this a repeat payment?
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -286,8 +304,10 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                     <FormItem>
                       <FormLabel>Recurrence Interval</FormLabel>
                       <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
+                        onValueChange={(value) => {
+                          console.log("Recurrence selected:", value);
+                          field.onChange(value);
+                        }}
                         value={field.value}
                       >
                         <FormControl>
@@ -338,6 +358,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                               variant="ghost" 
                               size="sm"
                               onClick={() => {
+                                console.log("Clear stop date clicked");
                                 field.onChange(undefined);
                                 const popover = document.querySelector('[data-radix-popper-content-wrapper]');
                                 if (popover instanceof HTMLElement) {
@@ -352,10 +373,15 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                           <Calendar
                             mode="single"
                             selected={field.value ?? undefined}
-                            onSelect={field.onChange}
+                            onSelect={(date) => {
+                              console.log("Stop date selected:", date);
+                              field.onChange(date);
+                            }}
                             disabled={(date) => date < form.getValues('date')}
                             initialFocus
-                            className="pointer-events-auto"
+                            captionLayout="dropdown-buttons"
+                            fromYear={2020}
+                            toYear={2030}
                           />
                         </PopoverContent>
                       </Popover>

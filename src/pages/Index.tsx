@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
@@ -200,30 +201,41 @@ export default function Index() {
   }, [expenses, displayCurrency]);
   
   const handleAddExpense = async (data: ExpenseFormValues) => {
-    let categoryId = '';
-    if (data.category) {
-      const foundCategory = categories.find(c => c.name === data.category);
+    console.log("Adding new expense with form data:", data);
+    
+    // Use categoryId directly since it now comes from the form as an ID
+    const categoryId = data.category;
+    
+    // Find the category name for display purposes
+    let categoryName = '';
+    if (categoryId) {
+      const foundCategory = categories.find(c => c.id === categoryId);
       if (foundCategory) {
-        categoryId = foundCategory.id;
+        categoryName = foundCategory.name;
+        console.log(`Found category: ${categoryName} for ID: ${categoryId}`);
+      } else {
+        console.warn(`Could not find category with ID: ${categoryId}`);
       }
     }
     
     const newExpense: Expense = {
       id: crypto.randomUUID(),
       ...data,
-      categoryId
+      categoryId: categoryId
     };
+    
+    console.log("Created new expense object:", newExpense);
     
     setExpenses(prev => [newExpense, ...prev]);
     
     try {
-      const { error } = await supabase
+      const { data: dbData, error } = await supabase
         .from('expenses')
         .insert({
           description: newExpense.description,
           amount: newExpense.amount,
           date: newExpense.date.toISOString().split('T')[0],
-          category: newExpense.category,
+          category: categoryName,
           category_id: categoryId,
           is_recurring: newExpense.isRecurring,
           recurrence_interval: newExpense.recurrenceInterval,
@@ -231,7 +243,12 @@ export default function Index() {
           currency: newExpense.currency
         });
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error details from Supabase:', error);
+        throw error;
+      }
+      
+      console.log("Successfully added expense to database:", dbData);
       
       toast({
         title: "Success",
