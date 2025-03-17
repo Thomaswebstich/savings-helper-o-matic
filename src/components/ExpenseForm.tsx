@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -58,31 +57,24 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
     if (initialValues) {
       console.log("Setting form values with:", initialValues);
       
-      // Ensure all dates are proper Date objects (not serialized objects)
-      const expenseDate = initialValues.date instanceof Date 
-        ? initialValues.date 
-        : new Date(initialValues.date);
+      // Ensure all dates are proper Date objects
+      const expenseDate = new Date(initialValues.date);
       
       let stopDate = undefined;
       if (initialValues.stopDate) {
-        stopDate = initialValues.stopDate instanceof Date 
-          ? initialValues.stopDate 
-          : new Date(initialValues.stopDate);
+        stopDate = new Date(initialValues.stopDate);
       }
-      
-      // Use categoryId directly for the category field
-      const categoryValue = initialValues.categoryId || '';
       
       console.log("Prepared date:", expenseDate);
       console.log("Prepared stop date:", stopDate);
-      console.log("Using category value:", categoryValue);
+      console.log("Using category value:", initialValues.categoryId);
       
       // Reset the form with prepared values
       form.reset({
         description: initialValues.description,
         amount: initialValues.amount,
         date: expenseDate,
-        category: categoryValue,
+        category: initialValues.categoryId,
         isRecurring: initialValues.isRecurring || false,
         recurrenceInterval: initialValues.recurrenceInterval,
         stopDate: stopDate,
@@ -105,13 +97,11 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
   const handleSubmit = (values: ExpenseFormValues) => {
     console.log("Form submitting with values:", values);
     
-    // Make sure date is a valid Date object
+    // Ensure dates are properly formatted
     const submissionValues: ExpenseFormValues = {
       ...values,
-      date: values.date instanceof Date ? values.date : new Date(values.date),
-      stopDate: values.stopDate ? 
-        (values.stopDate instanceof Date ? values.stopDate : new Date(values.stopDate)) 
-        : undefined
+      date: new Date(values.date),
+      stopDate: values.stopDate ? new Date(values.stopDate) : undefined
     };
     
     console.log("Formatted submission values:", submissionValues);
@@ -214,7 +204,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                             )}
                           >
                             {field.value ? (
-                              format(field.value, "PPP")
+                              format(new Date(field.value), "PPP")
                             ) : (
                               <span>Pick a date</span>
                             )}
@@ -225,7 +215,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={field.value}
+                          selected={field.value ? new Date(field.value) : undefined}
                           onSelect={(date) => {
                             console.log("Calendar date selected:", date);
                             field.onChange(date);
@@ -249,10 +239,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                   <FormItem>
                     <FormLabel>Category</FormLabel>
                     <Select 
-                      onValueChange={(value) => {
-                        console.log("Category selected:", value);
-                        field.onChange(value);
-                      }}
+                      onValueChange={field.onChange}
                       value={field.value}
                     >
                       <FormControl>
@@ -304,10 +291,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                     <FormItem>
                       <FormLabel>Recurrence Interval</FormLabel>
                       <Select 
-                        onValueChange={(value) => {
-                          console.log("Recurrence selected:", value);
-                          field.onChange(value);
-                        }}
+                        onValueChange={field.onChange}
                         value={field.value}
                       >
                         <FormControl>
@@ -344,7 +328,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                               )}
                             >
                               {field.value ? (
-                                format(field.value, "PPP")
+                                format(new Date(field.value), "PPP")
                               ) : (
                                 <span>No end date</span>
                               )}
@@ -372,7 +356,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                           </div>
                           <Calendar
                             mode="single"
-                            selected={field.value ?? undefined}
+                            selected={field.value ? new Date(field.value) : undefined}
                             onSelect={(date) => {
                               console.log("Stop date selected:", date);
                               field.onChange(date);

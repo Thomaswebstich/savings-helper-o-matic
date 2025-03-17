@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
@@ -203,10 +202,8 @@ export default function Index() {
   const handleAddExpense = async (data: ExpenseFormValues) => {
     console.log("Adding new expense with form data:", data);
     
-    // Use categoryId directly since it now comes from the form as an ID
     const categoryId = data.category;
     
-    // Find the category name for display purposes
     let categoryName = '';
     if (categoryId) {
       const foundCategory = categories.find(c => c.id === categoryId);
@@ -218,9 +215,14 @@ export default function Index() {
       }
     }
     
+    const expenseDate = new Date(data.date);
+    const stopDate = data.stopDate ? new Date(data.stopDate) : undefined;
+    
     const newExpense: Expense = {
       id: crypto.randomUUID(),
       ...data,
+      date: expenseDate,
+      stopDate: stopDate,
       categoryId: categoryId
     };
     
@@ -234,12 +236,12 @@ export default function Index() {
         .insert({
           description: newExpense.description,
           amount: newExpense.amount,
-          date: newExpense.date.toISOString().split('T')[0],
+          date: expenseDate.toISOString().split('T')[0],
           category: categoryName,
           category_id: categoryId,
           is_recurring: newExpense.isRecurring,
           recurrence_interval: newExpense.recurrenceInterval,
-          stop_date: newExpense.stopDate ? newExpense.stopDate.toISOString().split('T')[0] : null,
+          stop_date: stopDate ? stopDate.toISOString().split('T')[0] : null,
           currency: newExpense.currency
         });
         
@@ -291,9 +293,8 @@ export default function Index() {
       
       console.log("Updating expense with categoryId:", data.category, "and name:", categoryName);
       
-      const updatedDate = data.date instanceof Date ? data.date : new Date(data.date);
-      const updatedStopDate = data.stopDate instanceof Date ? data.stopDate : 
-        (data.stopDate ? new Date(data.stopDate) : undefined);
+      const updatedDate = new Date(data.date);
+      const updatedStopDate = data.stopDate ? new Date(data.stopDate) : undefined;
       
       const updatedExpense: Expense = { 
         ...currentExpense, 
