@@ -9,14 +9,12 @@ import { ExpenseAnalysis } from '@/components/ExpenseAnalysis';
 import { IncomeEditor } from '@/components/IncomeEditor';
 import { 
   Expense, 
-  generateMockExpenses, 
   calculateMonthlyTotals, 
   calculateCategoryTotals, 
   formatCurrency,
   Currency,
   convertCurrency,
   MONTHLY_INCOME,
-  seedDatabaseWithMockData
 } from '@/lib/data';
 import { ExpenseForm, ExpenseFormValues } from '@/components/ExpenseForm';
 import { Banknote, Calendar, Coins, CreditCard, ReceiptText } from 'lucide-react';
@@ -49,7 +47,7 @@ export default function Index() {
           const transformedExpenses: Expense[] = data.map(item => ({
             id: item.id,
             description: item.description,
-            amount: Number(item.amount), // Convert string to number properly
+            amount: Number(item.amount),
             date: new Date(item.date),
             category: item.category as any,
             isRecurring: item.is_recurring || false,
@@ -60,36 +58,21 @@ export default function Index() {
           
           setExpenses(transformedExpenses);
         } else {
-          console.log("No expenses found in database, generating mock data");
-          const mockData = generateMockExpenses();
-          setExpenses(mockData);
-          
-          // Seed the database with mock data
-          try {
-            await seedDatabaseWithMockData(mockData);
-            toast({
-              title: "Success",
-              description: "Initial mock data has been created",
-            });
-          } catch (seedError) {
-            console.error('Error seeding database:', seedError);
-            toast({
-              title: "Error",
-              description: "Failed to seed database with mock data",
-              variant: "destructive"
-            });
-          }
+          console.log("No expenses found in database");
+          setExpenses([]);
+          toast({
+            title: "No expenses found",
+            description: "Add your first expense to get started",
+          });
         }
       } catch (error) {
         console.error('Error fetching expenses:', error);
         toast({
           title: "Error",
-          description: "Failed to load expenses. Using mock data instead.",
+          description: "Failed to load expenses. Please try again later.",
           variant: "destructive"
         });
-        
-        const mockData = generateMockExpenses();
-        setExpenses(mockData);
+        setExpenses([]);
       } finally {
         setIsLoading(false);
       }
@@ -174,7 +157,7 @@ export default function Index() {
         .from('expenses')
         .insert({
           description: newExpense.description,
-          amount: newExpense.amount, // Supabase will handle the number
+          amount: newExpense.amount,
           date: newExpense.date.toISOString().split('T')[0],
           category: newExpense.category,
           is_recurring: newExpense.isRecurring,
@@ -352,29 +335,49 @@ export default function Index() {
               />
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-              <div className="lg:col-span-2">
-                <FinancialCharts 
-                  monthlyData={monthlyData} 
-                  categoryData={categoryData}
-                  onTimeRangeChange={handleTimeRangeChange}
-                />
+            {expenses.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                  <div className="lg:col-span-2">
+                    <FinancialCharts 
+                      monthlyData={monthlyData} 
+                      categoryData={categoryData}
+                      onTimeRangeChange={handleTimeRangeChange}
+                    />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <SavingsProjection 
+                      monthlyData={monthlyData} 
+                      currency={displayCurrency}
+                    />
+                  </div>
+                </div>
+                
+                <div className="mb-8">
+                  <ExpenseAnalysis 
+                    expenses={expenses}
+                    categoryData={categoryData}
+                    currency={displayCurrency}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="glass-card p-8 mb-8 text-center">
+                <h2 className="text-xl font-medium mb-2">No Expenses Found</h2>
+                <p className="text-muted-foreground mb-4">
+                  Get started by adding your first expense using the "+ Add Expense" button.
+                </p>
+                <button 
+                  onClick={() => {
+                    setCurrentExpense(null);
+                    setIsFormOpen(true);
+                  }}
+                  className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+                >
+                  Add Your First Expense
+                </button>
               </div>
-              <div className="lg:col-span-1">
-                <SavingsProjection 
-                  monthlyData={monthlyData} 
-                  currency={displayCurrency}
-                />
-              </div>
-            </div>
-            
-            <div className="mb-8">
-              <ExpenseAnalysis 
-                expenses={expenses}
-                categoryData={categoryData}
-                currency={displayCurrency}
-              />
-            </div>
+            )}
             
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">

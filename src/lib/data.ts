@@ -1,3 +1,4 @@
+
 import { addDays, format, subDays, subMonths } from "date-fns";
 
 export type Currency = "THB" | "USD" | "EUR";
@@ -91,7 +92,7 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   Other: "bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-300"
 };
 
-// Default monthly income - now no longer a constant
+// Default monthly income
 export let MONTHLY_INCOME = 5000;
 
 // Calculate monthly totals with custom income and time range
@@ -163,7 +164,9 @@ export const calculateMonthlyTotals = (
     // Calculate average non-recurring expenses from past few months
     const pastMonths = result.slice(-3);
     const totalPastExpenses = pastMonths.reduce((sum, month) => sum + month.expenses, 0);
-    const averageNonRecurring = (totalPastExpenses / pastMonths.length) - (monthlyRecurringTotal + monthlyFromWeekly);
+    const averageNonRecurring = pastMonths.length > 0 
+      ? (totalPastExpenses / pastMonths.length) - (monthlyRecurringTotal + monthlyFromWeekly) 
+      : 0;
     
     // Calculate total projected expenses
     const projectedExpenses = monthlyRecurringTotal + monthlyFromWeekly + averageNonRecurring;
@@ -180,140 +183,6 @@ export const calculateMonthlyTotals = (
   }
   
   return result;
-};
-
-// Generate mock expense data for demonstration
-export const generateMockExpenses = (count = 50): Expense[] => {
-  const expenses: Expense[] = [];
-  const currentDate = new Date();
-  
-  // Generate transactions from 3 months ago up to today
-  const startDate = subMonths(currentDate, 3);
-  
-  // Generate some recurring expenses
-  const recurringExpenses: Array<{
-    amount: number, 
-    description: string, 
-    category: Category, 
-    interval: "daily" | "weekly" | "monthly" | "yearly",
-    currency: Currency
-  }> = [
-    { amount: 15000, description: "Rent", category: "Housing", interval: "monthly", currency: "THB" },
-    { amount: 2000, description: "Electricity", category: "Utilities", interval: "monthly", currency: "THB" },
-    { amount: 500, description: "Internet", category: "Utilities", interval: "monthly", currency: "THB" },
-    { amount: 1500, description: "Phone", category: "Utilities", interval: "monthly", currency: "THB" },
-    { amount: 2000, description: "Car Payment", category: "Transportation", interval: "monthly", currency: "THB" },
-    { amount: 4000, description: "Groceries", category: "Food", interval: "weekly", currency: "THB" },
-    { amount: 12.99, description: "Streaming Service", category: "Entertainment", interval: "monthly", currency: "USD" },
-    { amount: 5000, description: "Savings", category: "Saving", interval: "monthly", currency: "THB" },
-  ];
-  
-  // Generate recurring expenses
-  recurringExpenses.forEach(({ amount, description, category, interval, currency }) => {
-    if (interval === "monthly") {
-      for (let i = 0; i <= 3; i++) {
-        const date = subMonths(currentDate, i);
-        // Add a random stop date for some recurring expenses
-        const stopDate = i === 0 && Math.random() > 0.7 
-          ? addDays(currentDate, Math.floor(Math.random() * 90) + 30) 
-          : undefined;
-          
-        expenses.push({
-          id: crypto.randomUUID(),
-          amount,
-          description,
-          date,
-          category,
-          isRecurring: true,
-          recurrenceInterval: interval,
-          stopDate,
-          currency
-        });
-      }
-    } else if (interval === "weekly") {
-      for (let i = 0; i <= 12; i++) {
-        const date = subDays(currentDate, i * 7);
-        if (date >= startDate) {
-          const stopDate = i === 0 && Math.random() > 0.7 
-            ? addDays(currentDate, Math.floor(Math.random() * 90) + 30) 
-            : undefined;
-            
-          expenses.push({
-            id: crypto.randomUUID(),
-            amount,
-            description,
-            date,
-            category,
-            isRecurring: true,
-            recurrenceInterval: interval,
-            stopDate,
-            currency
-          });
-        }
-      }
-    }
-  });
-  
-  // Generate random one-time expenses
-  const oneTimeExpenseCount = count - expenses.length;
-  for (let i = 0; i < oneTimeExpenseCount; i++) {
-    const randomDays = Math.floor(Math.random() * 90); // Random day in the last 3 months
-    const date = subDays(currentDate, randomDays);
-    
-    const category = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
-    let amount: number;
-    
-    // Randomly assign a currency with THB being more common
-    const currencyRandom = Math.random();
-    const currency: Currency = currencyRandom < 0.7 ? "THB" : (currencyRandom < 0.85 ? "USD" : "EUR");
-    
-    // Adjust amount ranges based on category and currency for more realistic data
-    switch (category) {
-      case "Entertainment":
-        amount = Math.floor(Math.random() * 100) + 10;
-        break;
-      case "Food":
-        amount = Math.floor(Math.random() * 80) + 5;
-        break;
-      case "Transportation":
-        amount = Math.floor(Math.random() * 60) + 10;
-        break;
-      case "Personal":
-        amount = Math.floor(Math.random() * 150) + 20;
-        break;
-      default:
-        amount = Math.floor(Math.random() * 200) + 10;
-    }
-    
-    // Apply currency conversion for more realistic amounts
-    if (currency === "THB") {
-      amount = Math.round(amount * 35); // THB values are higher
-    } else if (currency === "EUR") {
-      amount = Math.round(amount * 0.9); // EUR slightly lower than USD
-    }
-    
-    // Round to 2 decimal places
-    amount = Math.round(amount * 100) / 100;
-    
-    const descriptions = [
-      "Coffee shop", "Dinner", "Clothes", "Movie", "Books",
-      "Gadget", "Gift", "Home decor", "Pharmacy", "Hardware store",
-      "Take-out", "Concert tickets", "Haircut", "Gym", "Taxi",
-      "App subscription", "Birthday gift", "Parking", "Snacks", "Museum entry"
-    ];
-    
-    expenses.push({
-      id: crypto.randomUUID(),
-      amount,
-      description: descriptions[Math.floor(Math.random() * descriptions.length)],
-      date,
-      category,
-      isRecurring: false,
-      currency
-    });
-  }
-  
-  return expenses.sort((a, b) => b.date.getTime() - a.date.getTime());
 };
 
 // Convert amount from one currency to another
@@ -362,38 +231,4 @@ export const formatCurrency = (amount: number, currency: Currency = "THB"): stri
     currency: currency,
     minimumFractionDigits: 2
   }).format(amount);
-};
-
-// Function to seed database with mock data
-export const seedDatabaseWithMockData = async (expenses: Expense[]) => {
-  const { supabase } = await import('@/integrations/supabase/client');
-  
-  // Transform expenses to DB format
-  const dbExpenses = expenses.map(expense => ({
-    description: expense.description,
-    amount: expense.amount, // Send as number
-    date: expense.date.toISOString().split('T')[0],
-    category: expense.category,
-    is_recurring: expense.isRecurring,
-    recurrence_interval: expense.recurrenceInterval,
-    stop_date: expense.stopDate ? expense.stopDate.toISOString().split('T')[0] : null,
-    currency: expense.currency
-  }));
-  
-  console.log('Seeding database with', dbExpenses.length, 'expenses');
-  
-  // Insert in batches to avoid potential payload size issues
-  const batchSize = 25;
-  for (let i = 0; i < dbExpenses.length; i += batchSize) {
-    const batch = dbExpenses.slice(i, i + batchSize);
-    console.log(`Inserting batch ${i / batchSize + 1}/${Math.ceil(dbExpenses.length / batchSize)}`);
-    
-    const { error } = await supabase.from('expenses').insert(batch);
-    if (error) {
-      console.error('Error seeding database:', error);
-      throw error;
-    }
-  }
-  
-  console.log('Database seeding complete');
 };
