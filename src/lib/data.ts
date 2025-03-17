@@ -15,10 +15,10 @@ export { formatCurrency } from './calculation-utils';
 
 // From category-utils
 export {
-  CATEGORY_ICONS,
-  DEFAULT_CATEGORIES
+  CATEGORY_ICONS
 } from './category/constants';
 
+// From category api files
 export {
   fetchCategories,
   addCategory,
@@ -26,11 +26,11 @@ export {
   deleteCategory
 } from './category/category-api';
 
+// Explicitly export the budget API functions
 export {
-  fetchBudgets,
-  addBudget,
-  updateBudget,
-  deleteBudget
+  fetchCategoryBudgets,
+  setCategoryBudget,
+  deleteCategoryBudget
 } from './category/budget-api';
 
 // From calculation-utils
