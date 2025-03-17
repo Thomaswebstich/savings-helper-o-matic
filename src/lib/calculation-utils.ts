@@ -150,12 +150,14 @@ function calculateMonthIncomeForDate(incomeSources: IncomeSource[], monthDate: D
         default:
           return total + amountInTHB; // Default to monthly
       }
-    } else if (
-      startDate.getMonth() === monthDate.getMonth() && 
-      startDate.getFullYear() === monthDate.getFullYear()
-    ) {
-      // Non-recurring income only gets counted in its specific month
-      return total + amountInTHB;
+    } else {
+      // Check if one-time income falls in this specific month
+      const incomeMonth = startDate.getMonth();
+      const incomeYear = startDate.getFullYear();
+      
+      if (incomeMonth === monthDate.getMonth() && incomeYear === monthDate.getFullYear()) {
+        return total + amountInTHB;
+      }
     }
     
     return total;

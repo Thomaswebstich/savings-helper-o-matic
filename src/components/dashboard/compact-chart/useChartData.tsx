@@ -45,7 +45,10 @@ export function useChartData(monthlyData: MonthlyTotal[], showCompounded: boolea
       
       // If showing compounded savings, calculate cumulative savings for projected months
       if (showCompounded) {
-        let cumulativeSavings = 0;
+        // Start with the last actual (non-projected) month's savings
+        const lastActualMonth = transformedData.findIndex(item => item.isProjection) - 1;
+        let cumulativeSavings = lastActualMonth >= 0 ? transformedData[lastActualMonth].savings : 0;
+        
         transformedData = transformedData.map((item, index) => {
           if (item.isProjection) {
             cumulativeSavings += item.savings;

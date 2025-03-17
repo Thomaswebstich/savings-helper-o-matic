@@ -28,6 +28,7 @@ export function useIncomeData(displayCurrency: Currency = "THB") {
   }, []);
 
   const monthlyIncome = useMemo(() => {
+    // Calculate total monthly income, including one-time incomes for current month
     const totalInTHB = calculateTotalMonthlyIncome(incomeSources);
     return convertCurrency(totalInTHB, "THB", displayCurrency);
   }, [incomeSources, displayCurrency]);

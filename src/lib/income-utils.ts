@@ -120,11 +120,36 @@ export const deleteIncomeSource = async (id: string): Promise<void> => {
 };
 
 export const calculateTotalMonthlyIncome = (incomeSources: IncomeSource[]): number => {
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  
   return incomeSources.reduce((total, income) => {
+    // Skip if income hasn't started yet or has already ended
+    const startDate = new Date(income.startDate);
+    const endDate = income.endDate ? new Date(income.endDate) : null;
+    
+    if (startDate > currentDate || (endDate && endDate < currentDate)) {
+      return total;
+    }
+    
     const amountInTHB = convertCurrency(income.amount, income.currency, "THB");
     
-    if (income.isRecurring && income.recurrenceInterval === "monthly") {
-      return total + amountInTHB;
+    if (income.isRecurring) {
+      if (income.recurrenceInterval === "monthly") {
+        return total + amountInTHB;
+      } else if (income.recurrenceInterval === "daily") {
+        return total + (amountInTHB * 30);
+      } else if (income.recurrenceInterval === "weekly") {
+        return total + (amountInTHB * 4.3);
+      } else if (income.recurrenceInterval === "yearly" && startDate.getMonth() === currentMonth) {
+        return total + amountInTHB;
+      }
+    } else {
+      // One-time income that falls in the current month
+      if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
+        return total + amountInTHB;
+      }
     }
     
     return total;
