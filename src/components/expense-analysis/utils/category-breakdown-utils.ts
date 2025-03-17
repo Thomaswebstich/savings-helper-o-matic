@@ -21,6 +21,13 @@ export interface CategoryBreakdownResult {
   };
 }
 
+// Define an explicit type for category object to help with type checking
+interface CategoryObject {
+  name?: string;
+  color?: string;
+  [key: string]: any;
+}
+
 // Calculate category data breakdown
 export function calculateCategoryBreakdown(
   filteredExpenses: Expense[], 
@@ -44,15 +51,14 @@ export function calculateCategoryBreakdown(
     
     // Extract information from category object if available
     if (expense.category && typeof expense.category === 'object') {
-      // Now we know it's an object and not null
-      const categoryObj = expense.category;
+      // Use type assertion to help TypeScript understand the structure
+      const categoryObj = expense.category as CategoryObject;
       
-      // We need to check if the properties exist on the object
-      if (categoryObj && 'name' in categoryObj && typeof categoryObj.name === 'string') {
+      if (categoryObj.name && typeof categoryObj.name === 'string') {
         categoryName = categoryObj.name;
       }
       
-      if (categoryObj && 'color' in categoryObj && typeof categoryObj.color === 'string') {
+      if (categoryObj.color && typeof categoryObj.color === 'string') {
         color = categoryObj.color;
       }
     } else if (typeof expense.category === 'string') {
