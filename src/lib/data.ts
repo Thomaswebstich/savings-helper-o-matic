@@ -370,24 +370,30 @@ export const seedDatabaseWithMockData = async (expenses: Expense[]) => {
   
   // Transform expenses to DB format
   const dbExpenses = expenses.map(expense => ({
-    amount: expense.amount, // Supabase will handle number to string conversion
-    category: expense.category,
-    date: expense.date.toISOString().split('T')[0],
     description: expense.description,
+    amount: expense.amount, // Send as number
+    date: expense.date.toISOString().split('T')[0],
+    category: expense.category,
     is_recurring: expense.isRecurring,
     recurrence_interval: expense.recurrenceInterval,
     stop_date: expense.stopDate ? expense.stopDate.toISOString().split('T')[0] : null,
     currency: expense.currency
   }));
   
+  console.log('Seeding database with', dbExpenses.length, 'expenses');
+  
   // Insert in batches to avoid potential payload size issues
-  const batchSize = 50;
+  const batchSize = 25;
   for (let i = 0; i < dbExpenses.length; i += batchSize) {
     const batch = dbExpenses.slice(i, i + batchSize);
+    console.log(`Inserting batch ${i / batchSize + 1}/${Math.ceil(dbExpenses.length / batchSize)}`);
+    
     const { error } = await supabase.from('expenses').insert(batch);
     if (error) {
       console.error('Error seeding database:', error);
-      break;
+      throw error;
     }
   }
+  
+  console.log('Database seeding complete');
 };

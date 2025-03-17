@@ -15,7 +15,8 @@ import {
   formatCurrency,
   Currency,
   convertCurrency,
-  MONTHLY_INCOME
+  MONTHLY_INCOME,
+  seedDatabaseWithMockData
 } from '@/lib/data';
 import { ExpenseForm, ExpenseFormValues } from '@/components/ExpenseForm';
 import { Banknote, Calendar, Coins, CreditCard, ReceiptText } from 'lucide-react';
@@ -48,7 +49,7 @@ export default function Index() {
           const transformedExpenses: Expense[] = data.map(item => ({
             id: item.id,
             description: item.description,
-            amount: parseFloat(item.amount), // Convert string to number
+            amount: Number(item.amount), // Convert string to number properly
             date: new Date(item.date),
             category: item.category as any,
             isRecurring: item.is_recurring || false,
@@ -59,11 +60,25 @@ export default function Index() {
           
           setExpenses(transformedExpenses);
         } else {
+          console.log("No expenses found in database, generating mock data");
           const mockData = generateMockExpenses();
           setExpenses(mockData);
           
-          // Optionally, you can seed the database with mock data
-          // await seedDatabaseWithMockData(mockData);
+          // Seed the database with mock data
+          try {
+            await seedDatabaseWithMockData(mockData);
+            toast({
+              title: "Success",
+              description: "Initial mock data has been created",
+            });
+          } catch (seedError) {
+            console.error('Error seeding database:', seedError);
+            toast({
+              title: "Error",
+              description: "Failed to seed database with mock data",
+              variant: "destructive"
+            });
+          }
         }
       } catch (error) {
         console.error('Error fetching expenses:', error);
@@ -159,7 +174,7 @@ export default function Index() {
         .from('expenses')
         .insert({
           description: newExpense.description,
-          amount: newExpense.amount, // Supabase will handle the conversion to string
+          amount: newExpense.amount, // Supabase will handle the number
           date: newExpense.date.toISOString().split('T')[0],
           category: newExpense.category,
           is_recurring: newExpense.isRecurring,
@@ -206,7 +221,7 @@ export default function Index() {
           .from('expenses')
           .update({
             description: data.description,
-            amount: data.amount, // Supabase will handle the conversion to string
+            amount: data.amount, // Supabase will handle the number
             date: data.date.toISOString().split('T')[0],
             category: data.category,
             is_recurring: data.isRecurring,
