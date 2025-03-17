@@ -18,46 +18,55 @@ export function IncomeExpensesCompactChart({
   monthlyData,
   displayCurrency 
 }: IncomeExpensesCompactChartProps) {
-  const [data, setData] = useState<Array<{ date: string; month: string; income: number; expenses: number; savings: number }>>([]);
+  const [data, setData] = useState<Array<{ date: string; month: string; income: number; expenses: number; savings: number; isProjection: boolean }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSavings, setShowSavings] = useState(false);
   const [visibleMonths, setVisibleMonths] = useState({ start: 0, end: 0 });
-  const [timeRange, setTimeRange] = useState({ monthsBack: 6, monthsForward: 0 });
+  const [timeRange, setTimeRange] = useState({ monthsBack: 6, monthsForward: 3 });
   
   // Transform data when monthlyData changes
   useEffect(() => {
     setIsLoading(true);
     
     if (monthlyData.length > 0) {
-      const transformedData = monthlyData.map(month => {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      
+      const transformedData = monthlyData.map((month, index) => {
         // Parse the month string to get a proper date
         const [monthName, yearStr] = month.month.split(' ');
         const date = new Date(`${monthName} 1, ${yearStr}`);
+        
+        // Determine if this is a projection (future month)
+        const isProjection = (date.getFullYear() > currentYear) || 
+                             (date.getFullYear() === currentYear && date.getMonth() > currentMonth);
         
         return {
           date: date.toISOString().split('T')[0],
           month: month.month,
           income: month.income,
           expenses: month.expenses,
-          savings: month.savings
+          savings: month.savings,
+          isProjection
         };
       });
       
       setData(transformedData);
       
-      // Initialize visible months range
-      const end = Math.min(transformedData.length, timeRange.monthsBack);
-      setVisibleMonths({ 
-        start: Math.max(0, transformedData.length - end), 
-        end: transformedData.length 
-      });
+      // Initialize visible months range - include more future months by default
+      const historyCount = Math.min(transformedData.length - timeRange.monthsForward, timeRange.monthsBack);
+      const start = Math.max(0, transformedData.length - timeRange.monthsForward - historyCount);
+      const end = Math.min(transformedData.length, start + historyCount + timeRange.monthsForward);
+      
+      setVisibleMonths({ start, end });
       
       setIsLoading(false);
     } else {
       setData([]);
       setIsLoading(false);
     }
-  }, [monthlyData, timeRange.monthsBack]);
+  }, [monthlyData, timeRange.monthsBack, timeRange.monthsForward]);
   
   // Handle chart navigation
   const handleShowPrevious = () => {
@@ -85,7 +94,7 @@ export function IncomeExpensesCompactChart({
       
       // Adjust visible months
       const end = Math.min(data.length, visibleMonths.end);
-      const start = Math.max(0, end - newMonthsBack);
+      const start = Math.max(0, end - newMonthsBack - timeRange.monthsForward);
       setVisibleMonths({ start, end });
     }
   };
@@ -97,7 +106,7 @@ export function IncomeExpensesCompactChart({
       
       // Adjust visible months
       const end = Math.min(data.length, visibleMonths.end);
-      const start = Math.max(0, end - newMonthsBack);
+      const start = Math.max(0, end - newMonthsBack - timeRange.monthsForward);
       setVisibleMonths({ start, end });
     }
   };
@@ -113,8 +122,24 @@ export function IncomeExpensesCompactChart({
     
     // Adjust visible months
     const end = Math.min(data.length, data.length);
-    const start = Math.max(0, end - period);
+    const start = Math.max(0, end - period - timeRange.monthsForward);
     setVisibleMonths({ start, end });
+  };
+  
+  // Handle projection adjustment
+  const handleAdjustProjection = (change: number) => {
+    const newMonthsForward = Math.max(1, Math.min(12, timeRange.monthsForward + change));
+    
+    if (newMonthsForward === timeRange.monthsForward) return;
+    
+    setTimeRange(prev => ({ ...prev, monthsForward: newMonthsForward }));
+    
+    // Adjust visible months when changing projection
+    const totalVisibleMonths = visibleMonths.end - visibleMonths.start;
+    const newEnd = Math.min(data.length, visibleMonths.start + totalVisibleMonths + (change > 0 ? change : 0));
+    const newStart = Math.max(0, newEnd - totalVisibleMonths - (change > 0 ? change : 0));
+    
+    setVisibleMonths({ start: newStart, end: newEnd });
   };
   
   if (isLoading) {
@@ -146,12 +171,15 @@ export function IncomeExpensesCompactChart({
   const isExpensePositive = expenseChange <= 0; // Expenses going down is positive
   const isSavingsPositive = savingsChange >= 0;
   
+  // Count projected months
+  const projectedMonthsCount = visibleData.filter(d => d.isProjection).length;
+  
   return (
     <Card className="w-full">
       <CardHeader className="p-4 pb-0">
         <div className="flex justify-between items-center flex-wrap gap-2">
           <CardTitle className="text-sm">
-            Income & Expenses
+            Income & Expenses {projectedMonthsCount > 0 && `(Including ${projectedMonthsCount} Future Months)`}
           </CardTitle>
           
           <div className="flex items-center gap-2">
@@ -178,7 +206,7 @@ export function IncomeExpensesCompactChart({
               onZoomOut={handleZoomOut}
               onShowPrevious={handleShowPrevious}
               onShowNext={handleShowNext}
-              onAdjustProjection={() => {}}
+              onAdjustProjection={handleAdjustProjection}
             />
           </div>
           
@@ -233,6 +261,10 @@ export function IncomeExpensesCompactChart({
                   <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
                 </linearGradient>
+                <linearGradient id="savingsGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
+                </linearGradient>
               </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
               <XAxis 
@@ -257,6 +289,10 @@ export function IncomeExpensesCompactChart({
                   padding: '4px 8px',
                   border: '1px solid rgba(0,0,0,0.1)'
                 }}
+                labelFormatter={(label, items) => {
+                  const item = items[0]?.payload;
+                  return `${label}${item?.isProjection ? ' (Projected)' : ''}`;
+                }}
               />
               <Legend wrapperStyle={{ fontSize: '10px' }} />
               <Area 
@@ -279,6 +315,7 @@ export function IncomeExpensesCompactChart({
                 dataKey="savings" 
                 name="Savings" 
                 fill="#10b981" 
+                fillOpacity={0.35}
                 radius={[4, 4, 0, 0]}
               />
             </ComposedChart>
@@ -319,6 +356,10 @@ export function IncomeExpensesCompactChart({
                   fontSize: '10px', 
                   padding: '4px 8px',
                   border: '1px solid rgba(0,0,0,0.1)'
+                }}
+                labelFormatter={(label, items) => {
+                  const item = items[0]?.payload;
+                  return `${label}${item?.isProjection ? ' (Projected)' : ''}`;
                 }}
               />
               <Legend wrapperStyle={{ fontSize: '10px' }} />
