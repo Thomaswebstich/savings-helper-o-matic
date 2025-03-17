@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { MonthlyTotal, CategoryTotal, Currency, Expense, Category } from '@/lib/data';
+import { MonthlyTotal, CategoryTotal, Currency } from '@/lib/data';
 import {
   Tabs,
   TabsContent,
@@ -17,8 +17,6 @@ import { convertMonthlyData, convertCategoryData, preparePieData } from './chart
 interface FinancialChartsProps {
   monthlyData: MonthlyTotal[];
   categoryData: CategoryTotal[];
-  expenses: Expense[];
-  categories: Category[];
   onTimeRangeChange?: (range: { monthsBack: number, monthsForward: number }) => void;
   displayCurrency?: Currency;
 }
@@ -26,8 +24,6 @@ interface FinancialChartsProps {
 export function FinancialCharts({ 
   monthlyData, 
   categoryData,
-  expenses,
-  categories,
   onTimeRangeChange,
   displayCurrency = "THB"
 }: FinancialChartsProps) {
@@ -96,8 +92,6 @@ export function FinancialCharts({
             visibleData={visibleData}
             displayCurrency={displayCurrency}
             hasFutureData={hasFutureData}
-            expenses={expenses}
-            categories={categories}
           />
         </TabsContent>
         

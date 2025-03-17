@@ -9,7 +9,7 @@ import { useCategoryTotals } from './useCategoryTotals';
 
 export function useDashboardData() {
   const [displayCurrency, setDisplayCurrency] = useState<Currency>("THB");
-  const [timeRange, setTimeRange] = useState({ monthsBack: 9, monthsForward: 6 }); // Set default to 6 months forward for hotspots
+  const [timeRange, setTimeRange] = useState({ monthsBack: 9, monthsForward: 12 }); // Set default to 12 months forward
   
   // Use our specialized hooks
   const { expenses, setExpenses, isLoading: expensesLoading } = useExpenseData();
