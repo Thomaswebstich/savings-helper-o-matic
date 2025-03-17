@@ -1,6 +1,7 @@
 
 import { Category } from '@/lib/data';
 import { StackedBar } from '@/components/ui/stacked-bar';
+import { extractColorFromClass } from '@/components/expense-analysis/utils/category-breakdown-utils';
 
 interface ExpenseMonthStackedBarProps {
   categoryTotals: Map<string, number>;
@@ -29,7 +30,12 @@ export function ExpenseMonthStackedBar({
         
         // Get the category color from the categoryMap first (prioritize taxonomy color)
         const category = categoryMap.get(categoryId);
-        const color = category?.color || getCategoryColor(categoryId);
+        
+        // Extract actual color value if it's a Tailwind class
+        let color = getCategoryColor(categoryId);
+        if (category?.color) {
+          color = extractColorFromClass(category.color);
+        }
         
         return {
           id: categoryId,

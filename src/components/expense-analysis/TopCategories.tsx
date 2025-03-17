@@ -4,6 +4,7 @@ import { CategoryBadge } from '../CategoryBadge';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Expense, formatCurrency, Currency, convertCurrency } from '@/lib/data';
+import { extractColorFromClass } from './utils/category-breakdown-utils';
 
 interface TopCategoriesProps {
   categoryData: Array<{
@@ -58,7 +59,8 @@ export function TopCategories({
         }
         
         if (categoryObj.color && typeof categoryObj.color === 'string') {
-          color = categoryObj.color;
+          // Extract actual color from the Tailwind class
+          color = extractColorFromClass(categoryObj.color);
         }
       } else if (typeof expense.category === 'string') {
         categoryName = expense.category;
@@ -67,7 +69,9 @@ export function TopCategories({
       // Try to get color from categoryData if not available from expense
       if (!color) {
         const categoryInfo = categoryData.find(c => c.categoryId === categoryId);
-        color = categoryInfo?.color;
+        if (categoryInfo?.color) {
+          color = extractColorFromClass(categoryInfo.color);
+        }
       }
       
       if (!categoryMap.has(categoryId)) {
@@ -113,7 +117,9 @@ export function TopCategories({
     
     // Then try in the provided categoryData
     const providedCategoryInfo = categoryData.find(c => c.categoryId === categoryId);
-    if (providedCategoryInfo?.color) return providedCategoryInfo.color;
+    if (providedCategoryInfo?.color) {
+      return extractColorFromClass(providedCategoryInfo.color);
+    }
     
     // Use index or hash the category ID for consistent color
     return colors[index % colors.length];

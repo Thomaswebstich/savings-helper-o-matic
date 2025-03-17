@@ -28,6 +28,28 @@ interface CategoryObject {
   [key: string]: any;
 }
 
+// Extract the actual color value from category color class string
+export function extractColorFromClass(colorClass: string): string {
+  // Map of Tailwind color classes to hex codes
+  const colorMap: Record<string, string> = {
+    'bg-blue-100': '#0ea5e9', // blue
+    'bg-green-100': '#10b981', // green
+    'bg-orange-100': '#f59e0b', // amber/orange
+    'bg-yellow-100': '#facc15', // yellow
+    'bg-purple-100': '#8b5cf6', // purple
+    'bg-red-100': '#ef4444', // red
+    'bg-emerald-100': '#10b981', // emerald
+    'bg-sky-100': '#0ea5e9', // sky
+    'bg-indigo-100': '#6366f1', // indigo
+    'bg-gray-100': '#94a3b8', // gray/slate
+  };
+  
+  // Extract the base color from the class name (e.g., "bg-blue-100 text-blue-600..." -> "bg-blue-100")
+  const baseColorClass = colorClass.split(' ')[0];
+  
+  return colorMap[baseColorClass] || '#0ea5e9'; // Default to blue if not found
+}
+
 // Calculate category data breakdown
 export function calculateCategoryBreakdown(
   filteredExpenses: Expense[], 
@@ -59,7 +81,8 @@ export function calculateCategoryBreakdown(
       }
       
       if (categoryObj.color && typeof categoryObj.color === 'string') {
-        color = categoryObj.color;
+        // Extract the actual color from the Tailwind class
+        color = extractColorFromClass(categoryObj.color);
       }
     } else if (typeof expense.category === 'string') {
       categoryName = expense.category;

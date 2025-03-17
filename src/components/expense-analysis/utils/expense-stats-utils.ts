@@ -1,6 +1,7 @@
 
 import { Expense, Currency, convertCurrency } from '@/lib/data';
 import { subDays, isAfter, isBefore } from 'date-fns';
+import { extractColorFromClass } from './category-breakdown-utils';
 
 // Calculate spending averages (daily, weekly, monthly)
 export function calculateAverages(filteredExpenses: Expense[], currency: Currency) {
@@ -84,7 +85,7 @@ export function prepareStackedBarData(categoryData: Array<{
     .map(cat => ({
       id: cat.categoryId,
       value: cat.percentage,
-      color: cat.color || getCategoryColor(cat.categoryId, 0, categoryData)
+      color: cat.color ? extractColorFromClass(cat.color) : getCategoryColor(cat.categoryId, 0, categoryData)
     }));
 }
 
@@ -112,7 +113,10 @@ export function getCategoryColor(
   
   // Try to find color in categoryData first
   const categoryInfo = categoryData.find(c => c.categoryId === categoryId);
-  if (categoryInfo?.color) return categoryInfo.color;
+  if (categoryInfo?.color) {
+    // Extract the actual color from the class name if it's a Tailwind class
+    return extractColorFromClass(categoryInfo.color);
+  }
   
   // Use index or hash the category ID for consistent color
   if (index !== undefined) return colors[index % colors.length];
