@@ -1,5 +1,5 @@
 
-import { Currency, MonthlyTotal, CategoryTotal, Expense } from '@/lib/data';
+import { Currency, MonthlyTotal, CategoryTotal } from '@/lib/data';
 import { CURRENCY_SYMBOLS, formatCurrency, convertCurrency } from '@/lib/data';
 
 export const formatTooltipValue = (value: number, displayCurrency: Currency) => {
@@ -46,62 +46,6 @@ export const preparePieData = (convertedCategoryData: CategoryTotal[]) => {
   }
   
   return pieData;
-};
-
-// Determine the position of expenses on the chart based on their date
-export const getExpenseScatterData = (expenses: Expense[], monthlyData: MonthlyTotal[], displayCurrency: Currency) => {
-  if (!expenses || !monthlyData || monthlyData.length === 0) return [];
-  
-  // Create a map of month strings to x-positions
-  const monthPositions = new Map<string, number>();
-  monthlyData.forEach((item, index) => {
-    monthPositions.set(item.month, index);
-  });
-  
-  // Current date to determine if an expense is in the future
-  const now = new Date();
-  
-  // Filter and map expenses to scatter plot points
-  return expenses
-    .filter(expense => {
-      // Get the month string in the same format as in monthlyData
-      const expenseDate = new Date(expense.date);
-      const monthStr = `${expenseDate.toLocaleString('en-US', { month: 'short' })} ${expenseDate.getFullYear()}`;
-      
-      // Only include expenses that fall within the visible months
-      return monthPositions.has(monthStr);
-    })
-    .map(expense => {
-      const expenseDate = new Date(expense.date);
-      const monthStr = `${expenseDate.toLocaleString('en-US', { month: 'short' })} ${expenseDate.getFullYear()}`;
-      
-      // Get the x-position based on month
-      const xPos = monthPositions.get(monthStr) || 0;
-      
-      // Find the corresponding monthly data to scale the expense properly to expenses line
-      const monthData = monthlyData[xPos];
-      
-      // Convert currency
-      const convertedAmount = convertCurrency(expense.amount, expense.currency, displayCurrency);
-      
-      // Calculate y position - a simple scaling based on the month's total expenses
-      // Make sure dots always appear on the expenses line
-      const yPos = monthData?.expenses || convertedAmount;
-      
-      // Check if expense is in the future
-      const isFuture = expenseDate > now;
-      
-      return {
-        x: xPos,
-        y: yPos,
-        value: convertedAmount,
-        isFuture,
-        originalExpense: {
-          ...expense,
-          amount: convertedAmount
-        }
-      };
-    });
 };
 
 export const chartConfig = {
