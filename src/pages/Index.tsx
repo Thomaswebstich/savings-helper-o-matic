@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
@@ -39,6 +38,7 @@ export default function Index() {
   const [currentExpense, setCurrentExpense] = useState<Expense | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState<Currency>("THB");
   const [timeRange, setTimeRange] = useState({ monthsBack: 6, monthsForward: 3 });
+  const [categoryData, setCategoryData] = useState<any[]>([]);
   
   useEffect(() => {
     async function fetchData() {
@@ -106,7 +106,25 @@ export default function Index() {
     fetchData();
   }, []);
   
-  // Refetch when settings are updated
+  useEffect(() => {
+    const updateCategoryData = async () => {
+      if (expenses.length === 0 || categories.length === 0) {
+        setCategoryData([]);
+        return;
+      }
+      
+      try {
+        const data = await calculateCategoryTotals(expenses, categories, budgets);
+        setCategoryData(data);
+      } catch (error) {
+        console.error('Error calculating category totals:', error);
+        setCategoryData([]);
+      }
+    };
+    
+    updateCategoryData();
+  }, [expenses, categories, budgets]);
+  
   const refreshData = async () => {
     try {
       const [categoriesData, budgetsData, incomeData] = await Promise.all([
@@ -131,20 +149,6 @@ export default function Index() {
     if (expenses.length === 0) return [];
     return calculateMonthlyTotals(expenses, incomeSources, timeRange.monthsBack, timeRange.monthsForward);
   }, [expenses, incomeSources, timeRange]);
-  
-  const categoryData = useMemo(() => {
-    if (expenses.length === 0 || categories.length === 0) return [];
-    const getCategoryTotals = async () => {
-      return await calculateCategoryTotals(expenses, categories, budgets);
-    };
-    
-    // Initialize with empty array and update asynchronously
-    const [data, setData] = useState<any[]>([]);
-    
-    getCategoryTotals().then(setData).catch(console.error);
-    
-    return data;
-  }, [expenses, categories, budgets]);
   
   const currentMonthData = useMemo(() => {
     if (monthlyData.length === 0) return null;
@@ -200,7 +204,6 @@ export default function Index() {
   }, [expenses, displayCurrency]);
   
   const handleAddExpense = async (data: ExpenseFormValues) => {
-    // Find category ID if we have a name
     let categoryId = '';
     if (data.category) {
       const foundCategory = categories.find(c => c.name === data.category);
@@ -255,7 +258,6 @@ export default function Index() {
   
   const handleFormSubmit = async (data: ExpenseFormValues) => {
     if (currentExpense) {
-      // Find category ID if we have a name
       let categoryId = '';
       if (data.category) {
         const foundCategory = categories.find(c => c.name === data.category);
