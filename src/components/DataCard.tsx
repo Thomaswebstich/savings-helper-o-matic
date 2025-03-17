@@ -16,29 +16,32 @@ interface DataCardProps {
 
 export function DataCard({ title, value, icon, description, trend, className }: DataCardProps) {
   return (
-    <div className={cn("glass-card p-6 animate-slide-up", className)}>
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
-        {icon && <div className="text-primary">{icon}</div>}
-      </div>
-      
-      <div className="flex items-end gap-2">
-        <div className="text-2xl font-semibold">{value}</div>
-        
-        {trend && (
-          <div className={cn(
-            "text-sm flex items-center gap-1",
-            trend.isPositive ? "text-emerald-500" : "text-red-500"
-          )}>
-            <span>{trend.isPositive ? "↑" : "↓"}</span>
-            <span>{Math.round(trend.value)}%</span>
+    <div className={cn("glass-card p-3 animate-slide-up", className)}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {icon && <div className="text-primary">{icon}</div>}
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+            <div className="flex items-center gap-1.5">
+              <div className="text-base font-semibold">{value}</div>
+              
+              {trend && (
+                <div className={cn(
+                  "text-xs flex items-center",
+                  trend.isPositive ? "text-emerald-500" : "text-red-500"
+                )}>
+                  <span>{trend.isPositive ? "↑" : "↓"}</span>
+                  <span>{Math.round(trend.value)}%</span>
+                </div>
+              )}
+            </div>
           </div>
+        </div>
+        
+        {description && (
+          <p className="text-xs text-muted-foreground">{description}</p>
         )}
       </div>
-      
-      {description && (
-        <p className="text-sm text-muted-foreground mt-1">{description}</p>
-      )}
     </div>
   );
 }

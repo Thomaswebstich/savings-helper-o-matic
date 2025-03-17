@@ -1,5 +1,4 @@
 
-import { FinancialCharts } from '@/components/FinancialCharts';
 import { ExpenseAnalysis } from '@/components/ExpenseAnalysis';
 import { SavingsProjection } from '@/components/SavingsProjection';
 import { Expense, Currency } from '@/lib/data';
@@ -23,15 +22,6 @@ export function ChartsContainer({
 }: ChartsContainerProps) {
   return (
     <div className="grid grid-cols-1 gap-4 mb-5">
-      <div>
-        <FinancialCharts 
-          monthlyData={monthlyData} 
-          categoryData={categoryData}
-          onTimeRangeChange={onTimeRangeChange}
-          displayCurrency={displayCurrency}
-        />
-      </div>
-      
       <div>
         <ExpenseAnalysis 
           expenses={expenses}

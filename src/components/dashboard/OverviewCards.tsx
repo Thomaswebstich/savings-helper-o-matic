@@ -2,7 +2,6 @@
 import { DataCard } from '@/components/DataCard';
 import { Banknote, CreditCard, Coins, ReceiptText } from 'lucide-react';
 import { Currency, formatCurrency } from '@/lib/data';
-import { ExchangeRateChart } from './ExchangeRateChart';
 import { IncomeExpensesCompactChart } from './IncomeExpensesCompactChart';
 
 interface OverviewCardsProps {
@@ -31,15 +30,8 @@ export function OverviewCards({
 }: OverviewCardsProps) {
   return (
     <>
-      {/* Income & Expenses Chart - Full width */}
-      <div className="mb-5">
-        <IncomeExpensesCompactChart 
-          monthlyData={monthlyData}
-          displayCurrency={displayCurrency}
-        />
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      {/* Compact cards in one line */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
         <DataCard
           title="Total Expenses"
           value={formatCurrency(totalExpenses, displayCurrency)}
@@ -55,13 +47,21 @@ export function OverviewCards({
           title="Monthly Expenses"
           value={currentMonthData ? formatCurrency(currentMonthData.expenses, displayCurrency) : "0"}
           icon={<CreditCard className="h-4 w-4" />}
-          description="Current month spending"
+          description="Current month"
         />
         <DataCard
           title="Monthly Savings"
           value={currentMonthData ? formatCurrency(currentMonthData.savings, displayCurrency) : "0"}
           icon={<Coins className="h-4 w-4" />}
           trend={savingsChange.value !== 0 ? savingsChange : undefined}
+        />
+      </div>
+      
+      {/* Income & Expenses Chart - Full width */}
+      <div className="mb-5">
+        <IncomeExpensesCompactChart 
+          monthlyData={monthlyData}
+          displayCurrency={displayCurrency}
         />
       </div>
       
