@@ -22,8 +22,6 @@ export function ExpenseTableWrapper({
   monthlyIncome,
   incomeSources = []
 }: ExpenseTableWrapperProps) {
-  console.log('ExpenseTableWrapper received income sources:', incomeSources);
-  
   return (
     <div className="mt-5">
       <h2 className="font-semibold text-lg mb-3">Transaction History</h2>

@@ -3,20 +3,11 @@ import { useMemo } from 'react';
 import { 
   Expense, 
   Currency, 
-  IncomeSource,
-  convertCurrency,
-  calculateMonthlyTotals,
-  calculateMonthIncomeForDate
+  calculateMonthlyTotals, 
+  convertCurrency, 
+  IncomeSource, 
+  MonthlyTotal 
 } from '@/lib/data';
-
-// MonthlyTotal interface to type our data
-interface MonthlyTotal {
-  month: Date;
-  income: number;
-  expenses: number;
-  savings: number;
-  isProjected: boolean;
-}
 
 interface FinancialCalculationsProps {
   expenses: Expense[];
