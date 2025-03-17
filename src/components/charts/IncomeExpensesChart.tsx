@@ -9,7 +9,7 @@ import {
   XAxis, 
   YAxis
 } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { formatTooltipValue, chartConfig } from './financialChartUtils';
 import { prepareExpenseHotspots } from '@/lib/calculation-utils';
 import { ExpenseHotspots } from './ExpenseHotspots';
@@ -31,7 +31,7 @@ export function IncomeExpensesChart({
   expenses = [],
   categories = []
 }: IncomeExpensesChartProps) {
-  const [showHotspots, setShowHotspots] = useState(false);
+  const [showHotspots, setShowHotspots] = useState(true); // Set to true by default
   const [chartDimensions, setChartDimensions] = useState({ width: 0, height: 0 });
   const chartRef = useRef<HTMLDivElement>(null);
 

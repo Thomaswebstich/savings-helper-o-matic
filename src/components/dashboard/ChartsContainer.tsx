@@ -1,5 +1,4 @@
 
-import { useState } from 'react';
 import { FinancialCharts } from '@/components/FinancialCharts';
 import { MonthlyTotal, CategoryTotal, Expense, Category, Currency } from '@/lib/data';
 
