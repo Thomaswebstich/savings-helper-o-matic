@@ -4,7 +4,6 @@ import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, YA
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Currency, CURRENCY_SYMBOLS, MonthlyTotal } from '@/lib/data';
 import { ChartControls } from "@/components/charts/ChartControls";
 import { Label } from '@/components/ui/label';
@@ -21,8 +20,9 @@ export function IncomeExpensesCompactChart({
   const [data, setData] = useState<Array<{ date: string; month: string; income: number; expenses: number; savings: number; isProjection: boolean }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSavings, setShowSavings] = useState(false);
-  const [visibleMonths, setVisibleMonths] = useState({ start: 0, end: 0 });
-  const [timeRange, setTimeRange] = useState({ monthsBack: 6, monthsForward: 3 });
+  const [timeRange, setTimeRange] = useState({ monthsBack: 9, monthsForward: 3 });
+  const [sliderPosition, setSliderPosition] = useState(0);
+  const [visibleMonths, setVisibleMonths] = useState({ start: 0, end: 12 });
   
   // Transform data when monthlyData changes
   useEffect(() => {
@@ -54,76 +54,28 @@ export function IncomeExpensesCompactChart({
       
       setData(transformedData);
       
-      // Initialize visible months range - include more future months by default
-      const historyCount = Math.min(transformedData.length - timeRange.monthsForward, timeRange.monthsBack);
-      const start = Math.max(0, transformedData.length - timeRange.monthsForward - historyCount);
-      const end = Math.min(transformedData.length, start + historyCount + timeRange.monthsForward);
-      
-      setVisibleMonths({ start, end });
+      // Set the initial slider position to show the most recent data
+      const initialPosition = Math.max(0, transformedData.length - 12);
+      setSliderPosition(initialPosition);
+      setVisibleMonths({
+        start: initialPosition,
+        end: Math.min(initialPosition + 12, transformedData.length)
+      });
       
       setIsLoading(false);
     } else {
       setData([]);
       setIsLoading(false);
     }
-  }, [monthlyData, timeRange.monthsBack, timeRange.monthsForward]);
+  }, [monthlyData]);
   
-  // Handle chart navigation
-  const handleShowPrevious = () => {
-    if (visibleMonths.start > 0) {
-      setVisibleMonths(prev => ({
-        start: Math.max(0, prev.start - 1),
-        end: Math.max(timeRange.monthsBack, prev.end - 1)
-      }));
-    }
-  };
-  
-  const handleShowNext = () => {
-    if (visibleMonths.end < data.length) {
-      setVisibleMonths(prev => ({
-        start: prev.start + 1,
-        end: Math.min(data.length, prev.end + 1)
-      }));
-    }
-  };
-  
-  const handleZoomIn = () => {
-    if (timeRange.monthsBack > 3) {
-      const newMonthsBack = Math.max(3, timeRange.monthsBack - 3);
-      setTimeRange(prev => ({ ...prev, monthsBack: newMonthsBack }));
-      
-      // Adjust visible months
-      const end = Math.min(data.length, visibleMonths.end);
-      const start = Math.max(0, end - newMonthsBack - timeRange.monthsForward);
-      setVisibleMonths({ start, end });
-    }
-  };
-  
-  const handleZoomOut = () => {
-    if (timeRange.monthsBack < 12) {
-      const newMonthsBack = Math.min(12, timeRange.monthsBack + 3);
-      setTimeRange(prev => ({ ...prev, monthsBack: newMonthsBack }));
-      
-      // Adjust visible months
-      const end = Math.min(data.length, visibleMonths.end);
-      const start = Math.max(0, end - newMonthsBack - timeRange.monthsForward);
-      setVisibleMonths({ start, end });
-    }
-  };
-
-  // Handle time period change
-  const handlePeriodChange = (value: string) => {
-    if (!value) return;
+  // Handle slider change
+  const handleSliderChange = (value: number[]) => {
+    const newStart = value[0];
+    const newEnd = Math.min(newStart + 12, data.length);
     
-    const period = parseInt(value);
-    if (isNaN(period)) return;
-    
-    setTimeRange(prev => ({ ...prev, monthsBack: period }));
-    
-    // Adjust visible months
-    const end = Math.min(data.length, data.length);
-    const start = Math.max(0, end - period - timeRange.monthsForward);
-    setVisibleMonths({ start, end });
+    setSliderPosition(newStart);
+    setVisibleMonths({ start: newStart, end: newEnd });
   };
   
   // Handle projection adjustment
@@ -132,14 +84,11 @@ export function IncomeExpensesCompactChart({
     
     if (newMonthsForward === timeRange.monthsForward) return;
     
-    setTimeRange(prev => ({ ...prev, monthsForward: newMonthsForward }));
-    
-    // Adjust visible months when changing projection
-    const totalVisibleMonths = visibleMonths.end - visibleMonths.start;
-    const newEnd = Math.min(data.length, visibleMonths.start + totalVisibleMonths + (change > 0 ? change : 0));
-    const newStart = Math.max(0, newEnd - totalVisibleMonths - (change > 0 ? change : 0));
-    
-    setVisibleMonths({ start: newStart, end: newEnd });
+    setTimeRange(prev => ({ 
+      ...prev, 
+      monthsForward: newMonthsForward,
+      monthsBack: prev.monthsBack + (change * -1) // Adjust monthsBack inversely
+    }));
   };
   
   if (isLoading) {
@@ -192,21 +141,13 @@ export function IncomeExpensesCompactChart({
               <Label htmlFor="show-savings" className="text-xs">Show Savings</Label>
             </div>
             
-            <ToggleGroup type="single" value={timeRange.monthsBack.toString()} onValueChange={handlePeriodChange}>
-              <ToggleGroupItem value="3" size="sm" className="text-xs px-2 h-7">3M</ToggleGroupItem>
-              <ToggleGroupItem value="6" size="sm" className="text-xs px-2 h-7">6M</ToggleGroupItem>
-              <ToggleGroupItem value="12" size="sm" className="text-xs px-2 h-7">12M</ToggleGroupItem>
-            </ToggleGroup>
-            
             <ChartControls
               timeRange={timeRange}
               visibleMonths={visibleMonths}
               totalDataLength={data.length}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onShowPrevious={handleShowPrevious}
-              onShowNext={handleShowNext}
+              onSliderChange={handleSliderChange}
               onAdjustProjection={handleAdjustProjection}
+              sliderPosition={sliderPosition}
             />
           </div>
           

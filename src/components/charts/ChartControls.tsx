@@ -1,6 +1,8 @@
 
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { useState } from 'react';
 
 interface ChartControlsProps {
   timeRange: {
@@ -12,50 +14,42 @@ interface ChartControlsProps {
     end: number;
   };
   totalDataLength: number;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onShowPrevious: () => void;
-  onShowNext: () => void;
+  onSliderChange: (value: number[]) => void;
   onAdjustProjection: (change: number) => void;
+  sliderPosition?: number;
 }
 
 export function ChartControls({
   timeRange,
   visibleMonths,
   totalDataLength,
-  onZoomIn,
-  onZoomOut,
-  onShowPrevious,
-  onShowNext,
-  onAdjustProjection
+  onSliderChange,
+  onAdjustProjection,
+  sliderPosition = 0
 }: ChartControlsProps) {
+  const [sliderValue, setSliderValue] = useState<number[]>([sliderPosition]);
+  
+  const handleSliderChange = (value: number[]) => {
+    setSliderValue(value);
+    onSliderChange(value);
+  };
+  
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2 w-full max-w-xs">
       <div className="hidden lg:flex items-center mr-2 text-xs text-muted-foreground">
         <span>Hist: {timeRange.monthsBack}m</span>
         <span className="mx-1">|</span>
         <span>Proj: {timeRange.monthsForward}m</span>
       </div>
       
-      <div className="flex items-center space-x-0.5">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-6 w-6"
-          onClick={onZoomIn}
-          title="Show fewer months"
-        >
-          <ZoomIn className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-6 w-6"
-          onClick={onZoomOut}
-          title="Show more months"
-        >
-          <ZoomOut className="h-3 w-3" />
-        </Button>
+      <div className="flex-1">
+        <Slider 
+          value={sliderValue} 
+          max={Math.max(0, totalDataLength - 12)} 
+          step={1} 
+          onValueChange={handleSliderChange}
+          className="h-2"
+        />
       </div>
       
       <div className="flex items-center space-x-0.5 ml-1">
@@ -76,27 +70,6 @@ export function ChartControls({
           onClick={() => onAdjustProjection(1)}
           disabled={timeRange.monthsForward >= 12}
           title="Increase projection months"
-        >
-          <ChevronRight className="h-3 w-3" />
-        </Button>
-      </div>
-      
-      <div className="ml-1 flex items-center space-x-0.5">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-6 w-6"
-          onClick={onShowPrevious}
-          disabled={visibleMonths.start <= 0}
-        >
-          <ChevronLeft className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-6 w-6"
-          onClick={onShowNext}
-          disabled={visibleMonths.end >= totalDataLength}
         >
           <ChevronRight className="h-3 w-3" />
         </Button>
