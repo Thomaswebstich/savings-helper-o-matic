@@ -244,6 +244,8 @@ export function IncomeManager() {
   
   const handleIncomeChange = async (incomeId: string, newAmount: number) => {
     try {
+      console.log(`Updating income with ID ${incomeId} to amount ${newAmount}`);
+      
       const updatedIncome = await updateIncomeSource(incomeId, { amount: newAmount });
       
       setIncomeSources(prev => 

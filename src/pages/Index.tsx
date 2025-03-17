@@ -254,7 +254,17 @@ export default function Index() {
   
   const handleEditExpense = (expense: Expense) => {
     console.log("Editing expense:", expense);
-    setCurrentExpense(expense);
+    
+    // Make sure all data is converted to proper types before setting currentExpense
+    const preparedExpense: Expense = {
+      ...expense,
+      date: expense.date instanceof Date ? expense.date : new Date(expense.date),
+      stopDate: expense.stopDate ? 
+        (expense.stopDate instanceof Date ? expense.stopDate : new Date(expense.stopDate)) 
+        : undefined
+    };
+    
+    setCurrentExpense(preparedExpense);
     setIsFormOpen(true);
   };
   
@@ -264,16 +274,23 @@ export default function Index() {
     if (currentExpense) {
       // For editing an existing expense
       let categoryId = data.category;
+      let categoryName = '';
       
-      // If it looks like a category name rather than an ID, try to find the matching ID
-      if (categoryId && !categories.some(c => c.id === categoryId)) {
-        const foundCategory = categories.find(c => c.name === categoryId);
-        if (foundCategory) {
-          categoryId = foundCategory.id;
+      // Find the category name if we have a valid category ID
+      const foundCategory = categories.find(c => c.id === categoryId);
+      if (foundCategory) {
+        categoryName = foundCategory.name;
+      } 
+      // If we don't have a matching category ID, maybe it's a name - try to find the ID
+      else if (categoryId) {
+        const categoryByName = categories.find(c => c.name === categoryId);
+        if (categoryByName) {
+          categoryId = categoryByName.id;
+          categoryName = categoryByName.name;
         }
       }
       
-      console.log("Updating expense with categoryId:", categoryId);
+      console.log("Updating expense with categoryId:", categoryId, "and name:", categoryName);
       
       const updatedExpense: Expense = { 
         ...currentExpense, 
@@ -281,7 +298,7 @@ export default function Index() {
         amount: data.amount,
         date: data.date,
         categoryId: categoryId,
-        category: categories.find(c => c.id === categoryId)?.name || '',
+        category: categoryName,
         isRecurring: data.isRecurring,
         recurrenceInterval: data.recurrenceInterval,
         stopDate: data.stopDate,
@@ -305,7 +322,7 @@ export default function Index() {
             description: data.description,
             amount: data.amount,
             date: data.date.toISOString().split('T')[0],
-            category: categories.find(c => c.id === categoryId)?.name || '',
+            category: categoryName,
             category_id: categoryId,
             is_recurring: data.isRecurring,
             recurrence_interval: data.recurrenceInterval,

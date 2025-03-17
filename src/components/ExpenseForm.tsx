@@ -58,23 +58,36 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
     if (initialValues) {
       console.log("Setting form values with:", initialValues);
       
-      // Ensure the date is a proper Date object
-      const expenseDate = initialValues.date instanceof Date 
-        ? initialValues.date 
-        : new Date(initialValues.date);
+      // Ensure all dates are Date objects
+      const expenseDate = new Date(initialValues.date);
+      let stopDate = undefined;
       
-      // If we have initial values, set them in the form
+      if (initialValues.stopDate) {
+        stopDate = new Date(initialValues.stopDate);
+      }
+      
+      // Use categoryId if available, otherwise use category name
+      let categoryValue = initialValues.categoryId;
+      if (!categoryValue && initialValues.category) {
+        // Try to find the category ID by name
+        const foundCategory = categories.find(c => c.name === initialValues.category);
+        if (foundCategory) {
+          categoryValue = foundCategory.id;
+        }
+      }
+      
+      console.log("Resetting form with category value:", categoryValue);
+      
+      // Reset the form with prepared values
       form.reset({
         description: initialValues.description,
         amount: initialValues.amount,
         date: expenseDate,
-        category: initialValues.categoryId || '', // Use categoryId as the primary identifier
+        category: categoryValue || '',
         isRecurring: initialValues.isRecurring,
         recurrenceInterval: initialValues.recurrenceInterval,
-        stopDate: initialValues.stopDate instanceof Date 
-          ? initialValues.stopDate 
-          : initialValues.stopDate ? new Date(initialValues.stopDate) : undefined,
-        currency: initialValues.currency
+        stopDate: stopDate,
+        currency: initialValues.currency || 'THB'
       });
     } else {
       // Reset to defaults if no initial values
@@ -87,7 +100,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
         currency: 'THB'
       });
     }
-  }, [initialValues, form, open]);
+  }, [initialValues, form, open, categories]);
   
   // Handle form submission
   const handleSubmit = (values: ExpenseFormValues) => {

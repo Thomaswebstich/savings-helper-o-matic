@@ -12,7 +12,7 @@ import { Edit2, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface IncomeEditorProps {
-  incomeId: string; // Added incomeId for update operation
+  incomeId: string;
   income: number;
   currency: Currency;
   onIncomeChange: (newIncome: number) => void;
@@ -28,6 +28,8 @@ export function IncomeEditor({ incomeId, income, currency, onIncomeChange }: Inc
     
     if (!isNaN(numValue) && numValue > 0) {
       try {
+        console.log(`Updating income source ${incomeId} with amount: ${numValue}`);
+        
         // Update the income source in the database
         await updateIncomeSource(incomeId, { amount: numValue });
         

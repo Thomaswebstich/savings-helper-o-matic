@@ -1,4 +1,3 @@
-
 import { addDays, format, subDays, subMonths } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -306,10 +305,22 @@ export const updateIncomeSource = async (id: string, changes: Partial<Omit<Incom
   if (changes.currency !== undefined) updatePayload.currency = changes.currency;
   if (changes.isRecurring !== undefined) updatePayload.is_recurring = changes.isRecurring;
   if (changes.recurrenceInterval !== undefined) updatePayload.recurrence_interval = changes.recurrenceInterval;
-  if (changes.startDate !== undefined) updatePayload.start_date = changes.startDate.toISOString().split('T')[0];
-  if (changes.endDate !== undefined) updatePayload.end_date = changes.endDate.toISOString().split('T')[0];
+  
+  if (changes.startDate !== undefined) {
+    updatePayload.start_date = changes.startDate instanceof Date 
+      ? changes.startDate.toISOString().split('T')[0] 
+      : changes.startDate;
+  }
+  
+  if (changes.endDate !== undefined) {
+    updatePayload.end_date = changes.endDate instanceof Date 
+      ? changes.endDate.toISOString().split('T')[0] 
+      : changes.endDate;
+  }
   
   updatePayload.updated_at = new Date().toISOString();
+  
+  console.log(`Updating income source ${id} with:`, updatePayload);
   
   const { data, error } = await supabase
     .from('income_sources')
