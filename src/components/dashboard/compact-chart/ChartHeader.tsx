@@ -16,9 +16,13 @@ export function ChartHeader({
   setShowSavings,
 }: ChartHeaderProps) {
   return (
-    <div className="flex justify-between items-center">
+    <div className="flex justify-between items-center mb-2">
       <div className="text-sm font-medium">
-        {title} {projectedMonthsCount > 0 && `(Including ${projectedMonthsCount} Future Months)`}
+        {title} {projectedMonthsCount > 0 && (
+          <span className="text-xs text-muted-foreground ml-1">
+            (Including {projectedMonthsCount} Future Month{projectedMonthsCount > 1 ? 's' : ''})
+          </span>
+        )}
       </div>
       
       <div className="flex items-center space-x-2">

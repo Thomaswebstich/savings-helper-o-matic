@@ -63,14 +63,14 @@ export function IncomeExpensesCompactChart({
           showSavings={showSavings}
         />
       </CardHeader>
-      <CardContent className="p-4 pt-2 h-[260px]">
+      <CardContent className="p-4 pt-2 pb-1">
         <IncomeExpensesChart
           visibleData={visibleData}
           displayCurrency={displayCurrency}
           showSavings={showSavings}
         />
       </CardContent>
-      <CardFooter className="px-4 pt-0 pb-4">
+      <CardFooter className="px-4 pt-2 pb-4">
         <ChartControls
           timeRange={timeRange}
           visibleMonths={visibleMonths}
@@ -78,7 +78,7 @@ export function IncomeExpensesCompactChart({
           onSliderChange={handleSliderChange}
           onAdjustProjection={handleAdjustProjection}
           sliderPosition={sliderPosition}
-          className="w-full"
+          className="w-full" 
         />
       </CardFooter>
     </Card>

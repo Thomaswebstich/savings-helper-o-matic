@@ -1,5 +1,5 @@
 
-import { MonthlyTotal, CURRENCY_SYMBOLS, formatCurrency } from '@/lib/data';
+import { MonthlyTotal, CURRENCY_SYMBOLS, formatCurrency, convertCurrency } from '@/lib/data';
 import { Currency } from '@/lib/types';
 import { 
   Bar, 
@@ -7,9 +7,10 @@ import {
   CartesianGrid, 
   Cell, 
   XAxis, 
-  YAxis
+  YAxis, 
+  Tooltip
 } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer } from '@/components/ui/chart';
 import { chartConfig } from './financialChartUtils';
 
 interface SavingsChartProps {
@@ -25,11 +26,17 @@ export function SavingsChart({
   hasFutureData,
   monthsForward
 }: SavingsChartProps) {
+  // Convert the data to the display currency
+  const convertedData = visibleData.map(item => ({
+    ...item,
+    savings: convertCurrency(item.savings, "THB", displayCurrency)
+  }));
+
   return (
     <>
       <div className="h-[250px]">
         <ChartContainer config={chartConfig}>
-          <BarChart data={visibleData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+          <BarChart data={convertedData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
             <XAxis 
               dataKey="month" 
@@ -43,14 +50,13 @@ export function SavingsChart({
               tickLine={false}
               tick={{ fontSize: 10 }}
             />
-            <ChartTooltip 
-              content={(props) => {
-                const { active, payload } = props;
+            <Tooltip 
+              content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   const value = Number(payload[0].value);
                   return (
                     <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
-                      <p className="font-medium mb-1">{payload[0].payload.month}</p>
+                      <p className="font-medium mb-1">{label}</p>
                       <div className="flex justify-between gap-4">
                         <span style={{ color: value >= 0 ? "#10b981" : "#f43f5e" }}>Savings:</span>
                         <span className="font-medium">{formatCurrency(value, displayCurrency)}</span>
@@ -67,11 +73,11 @@ export function SavingsChart({
               fill="#10b981"
               radius={[4, 4, 0, 0]}
             >
-              {visibleData.map((entry, index) => (
+              {convertedData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
                   fill={entry.savings < 0 ? "#f43f5e" : "#10b981"} 
-                  opacity={hasFutureData && index >= visibleData.length - monthsForward ? 0.7 : 1}
+                  opacity={hasFutureData && index >= convertedData.length - monthsForward ? 0.7 : 1}
                 />
               ))}
             </Bar>
