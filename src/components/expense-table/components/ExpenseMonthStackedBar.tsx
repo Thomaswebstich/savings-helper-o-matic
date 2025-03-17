@@ -1,3 +1,4 @@
+
 import { StackedBar } from '@/components/ui/stacked-bar';
 import { extractColorFromClass } from '@/components/expense-analysis/utils/category-breakdown-utils';
 import { Category } from '@/lib/data';
@@ -97,13 +98,43 @@ export function ExpenseMonthStackedBar({
 
   const stackedBarData = getStackedBarData();
 
+  // Calculate the unused income segment (if showing against income)
+  let remainderSegment = null;
+  if (showAgainstIncome && monthlyIncome > 0) {
+    const usedPercentage = stackedBarData.reduce((sum, segment) => sum + segment.value, 0);
+    const remainingPercentage = Math.max(0, 100 - usedPercentage);
+    
+    if (remainingPercentage > 0) {
+      remainderSegment = {
+        id: "remaining-income",
+        value: remainingPercentage,
+        color: "#0ea5e9" // Use sky blue for remaining income (savings)
+      };
+    }
+  }
+
+  // Add the remainder segment to the stacked bar data if it exists
+  const finalBarData = remainderSegment 
+    ? [...stackedBarData, remainderSegment]
+    : stackedBarData;
+
   return (
     <div className="px-4 pb-2 pt-1">
       <StackedBar 
-        segments={stackedBarData} 
+        segments={finalBarData} 
         height={4}
         className="mb-1.5"
       />
+      
+      {/* Optional: Add legend for income/savings if showing against income */}
+      {showAgainstIncome && remainderSegment && (
+        <div className="flex items-center justify-end">
+          <span className="text-xs text-sky-500 flex items-center gap-1">
+            <span className="inline-block w-2 h-2 bg-sky-500 rounded-full"></span>
+            Available Income
+          </span>
+        </div>
+      )}
     </div>
   );
 }

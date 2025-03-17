@@ -63,6 +63,7 @@ export function ExpenseMonthGroup({
             total={group.total}
             expenseCount={group.expenses.length}
             isExpanded={isExpanded}
+            income={monthlyIncome}
           />
           
           {/* Category stacked bar - only show when not expanded */}
