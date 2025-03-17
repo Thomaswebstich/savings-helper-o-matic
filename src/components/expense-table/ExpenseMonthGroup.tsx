@@ -55,10 +55,15 @@ export function ExpenseMonthGroup({
 }: ExpenseMonthGroupProps) {
   
   // Calculate income for this specific month
-  const monthDate = group.month;
+  const monthDate = new Date(group.month);
+  console.log(`Calculating income for month: ${format(monthDate, 'MMMM yyyy')}`);
+  console.log('Income sources:', incomeSources);
+  
   const monthSpecificIncome = incomeSources && incomeSources.length > 0 
     ? calculateMonthIncomeForDate(incomeSources, monthDate)
     : monthlyIncome;
+  
+  console.log(`Month specific income for ${format(monthDate, 'MMMM yyyy')}: ${monthSpecificIncome}`);
   
   return (
     <Collapsible 

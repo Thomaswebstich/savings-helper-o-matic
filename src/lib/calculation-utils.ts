@@ -1,168 +1,83 @@
+import { IncomeSource, Expense, Category, Currency } from './data';
+import { format, getMonth, getYear } from 'date-fns';
 
-import { addDays, format, subMonths } from "date-fns";
-import { Expense, IncomeSource, MonthlyTotal } from './types';
-import { convertCurrency } from './currency-utils';
-import { calculateTotalMonthlyIncome } from './income-utils';
+// Helper function to format currency
+export function formatCurrency(amount: number, currency: Currency = 'THB'): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+  }).format(amount);
+}
 
-export const calculateMonthlyTotals = (
-  expenses: Expense[],
-  incomeSources: IncomeSource[],
-  monthsBack = 6, 
-  monthsForward = 12  // Default to 12 months forward
-): MonthlyTotal[] => {
-  const result: MonthlyTotal[] = [];
-  const currentDate = new Date();
-  
-  for (let i = monthsBack; i >= 0; i--) {
-    const currentMonth = subMonths(currentDate, i);
-    const monthStr = format(currentMonth, "MMM yyyy");
-    const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-    const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-    
-    const monthExpenses = expenses.filter(exp => {
-      const expDate = new Date(exp.date);
-      return expDate.getMonth() === currentMonth.getMonth() && 
-             expDate.getFullYear() === currentMonth.getFullYear();
-    });
-    
-    const totalExpenses = monthExpenses.reduce((sum, exp) => {
-      const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
-      return sum + amountInTHB;
-    }, 0);
-    
-    // Calculate income for this specific month
-    const monthlyIncome = calculateMonthIncomeForDate(incomeSources, monthStart);
-    
-    const savings = monthlyIncome - totalExpenses;
-    
-    result.push({
-      month: monthStr,
-      income: monthlyIncome,
-      expenses: totalExpenses,
-      savings: savings
-    });
-  }
-  
-  for (let i = 1; i <= monthsForward; i++) {
-    const futureMonth = addDays(currentDate, i * 30);
-    const monthStr = format(futureMonth, "MMM yyyy");
-    const monthStart = new Date(futureMonth.getFullYear(), futureMonth.getMonth(), 1);
-    const monthEnd = new Date(futureMonth.getFullYear(), futureMonth.getMonth() + 1, 0);
-    
-    let projectedExpenses = 0;
-    
-    expenses.forEach(expense => {
-      if (!expense.isRecurring) return;
-      
-      const expenseDate = new Date(expense.date);
-      const stopDate = expense.stopDate ? new Date(expense.stopDate) : null;
-      
-      if (stopDate && stopDate < monthStart) return;
-      
-      const amountInTHB = convertCurrency(expense.amount, expense.currency, "THB");
-      
-      switch (expense.recurrenceInterval) {
-        case "daily":
-          projectedExpenses += amountInTHB * 30;
-          break;
-          
-        case "weekly":
-          projectedExpenses += amountInTHB * 4.3;
-          break;
-          
-        case "monthly":
-          projectedExpenses += amountInTHB;
-          break;
-          
-        case "yearly":
-          if (expenseDate.getMonth() === futureMonth.getMonth()) {
-            projectedExpenses += amountInTHB;
-          }
-          break;
-          
-        default:
-          projectedExpenses += amountInTHB;
-      }
-    });
-    
-    const pastMonths = result.slice(-3);
-    const avgNonRecurring = pastMonths.length > 0 
-      ? pastMonths.reduce((sum, month) => {
-          const recurringForMonth = expenses
-            .filter(exp => 
-              exp.isRecurring && 
-              new Date(exp.date) <= new Date(month.month) &&
-              (!exp.stopDate || new Date(exp.stopDate) >= new Date(month.month))
-            )
-            .reduce((total, exp) => {
-              const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
-              return total + amountInTHB;
-            }, 0);
-            
-          return sum + Math.max(0, month.expenses - recurringForMonth);
-        }, 0) / pastMonths.length
-      : 0;
-      
-    projectedExpenses += avgNonRecurring;
-    
-    // Calculate future income taking start dates and end dates into account
-    const monthlyIncome = calculateMonthIncomeForDate(incomeSources, monthStart);
-    
-    const projectedSavings = monthlyIncome - projectedExpenses;
-    
-    result.push({
-      month: monthStr,
-      income: monthlyIncome,
-      expenses: projectedExpenses,
-      savings: projectedSavings
-    });
-  }
-  
-  return result;
-};
+// Function to calculate total monthly income
+export function calculateTotalMonthlyIncome(incomeSources: IncomeSource[]): number {
+  return incomeSources.reduce((total, source) => total + source.amount, 0);
+}
+
+// Function to group expenses by month
+export function groupExpensesByMonth(expenses: Expense[]) {
+  return expenses.reduce((groups: { [key: string]: Expense[] }, expense) => {
+    const monthYear = format(expense.date, 'MMMM yyyy');
+    if (!groups[monthYear]) {
+      groups[monthYear] = [];
+    }
+    groups[monthYear].push(expense);
+    return groups;
+  }, {});
+}
+
+export function calculateCategoryTotals(expenses: Expense[], categoryMap: Map<string, Category>): Map<string, number> {
+  const categoryTotals = new Map<string, number>();
+
+  expenses.forEach(expense => {
+    if (expense.categoryId) {
+      const categoryId = expense.categoryId;
+      const currentTotal = categoryTotals.get(categoryId) || 0;
+      categoryTotals.set(categoryId, currentTotal + expense.amount);
+    }
+  });
+
+  return categoryTotals;
+}
 
 // Helper function to calculate income for a specific month
 export function calculateMonthIncomeForDate(incomeSources: IncomeSource[], monthDate: Date): number {
-  const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-  const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0);
   
-  return incomeSources.reduce((total, income) => {
-    // Skip if income hasn't started yet or has already ended
+  console.log(`Calculating income for: ${monthStart.toISOString()} to ${monthEnd.toISOString()}`);
+  
+  let totalIncome = 0;
+  
+  incomeSources.forEach(income => {
     const startDate = new Date(income.startDate);
-    const endDate = income.endDate ? new Date(income.endDate) : null;
     
-    if (startDate > monthEnd || (endDate && endDate < monthStart)) {
-      return total;
+    // Check if one-time income falls within this month
+    if (!income.isRecurring) {
+      if (startDate >= monthStart && startDate <= monthEnd) {
+        console.log(`Adding one-time income for ${income.description}: ${income.amount}`);
+        totalIncome += income.amount;
+      }
+      return;
     }
     
-    const amountInTHB = convertCurrency(income.amount, income.currency, "THB");
-    
-    if (income.isRecurring) {
-      switch (income.recurrenceInterval) {
-        case "daily":
-          return total + (amountInTHB * 30);
-        case "weekly":
-          return total + (amountInTHB * 4.3);
-        case "monthly":
-          return total + amountInTHB;
-        case "yearly":
-          if (startDate.getMonth() === monthDate.getMonth()) {
-            return total + amountInTHB;
-          }
-          return total;
-        default:
-          return total + amountInTHB; // Default to monthly
+    // Handle recurring income
+    if (startDate <= monthEnd) {
+      // Check if this recurring income has ended
+      if (income.endDate) {
+        const endDate = new Date(income.endDate);
+        if (endDate < monthStart) {
+          return; // Income has ended before this month
+        }
       }
-    } else {
-      // Check if one-time income falls in this specific month
-      const incomeMonth = startDate.getMonth();
-      const incomeYear = startDate.getFullYear();
       
-      if (incomeMonth === monthDate.getMonth() && incomeYear === monthDate.getFullYear()) {
-        return total + amountInTHB;
-      }
+      console.log(`Adding recurring income for ${income.description}: ${income.amount}`);
+      totalIncome += income.amount;
     }
-    
-    return total;
-  }, 0);
+  });
+  
+  console.log(`Total income for month: ${totalIncome}`);
+  return totalIncome;
 }
