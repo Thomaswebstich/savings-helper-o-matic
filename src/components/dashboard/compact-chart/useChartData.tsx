@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { MonthlyTotal, Currency } from '@/lib/data';
+import { MonthlyTotal } from '@/lib/data';
 
 interface ChartDataPoint {
   date: string;
@@ -16,12 +16,12 @@ export function useChartData(monthlyData: MonthlyTotal[]) {
   const [isLoading, setIsLoading] = useState(true);
   const [sliderPosition, setSliderPosition] = useState(0);
   const [visibleMonths, setVisibleMonths] = useState({ start: 0, end: 12 });
-  const [timeRange, setTimeRange] = useState({ monthsBack: 9, monthsForward: 12 });
+  const [timeRange, setTimeRange] = useState({ monthsBack: 9, monthsForward: 3 });
   
   useEffect(() => {
     setIsLoading(true);
     
-    if (monthlyData.length > 0) {
+    if (monthlyData && monthlyData.length > 0) {
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
@@ -51,7 +51,7 @@ export function useChartData(monthlyData: MonthlyTotal[]) {
       });
       
       const initialPosition = currentMonthIndex >= 0 
-        ? Math.max(0, Math.min(currentMonthIndex, transformedData.length - 12))
+        ? Math.max(0, Math.min(currentMonthIndex - 6, transformedData.length - 12))
         : Math.max(0, transformedData.length - 12);
       
       setSliderPosition(initialPosition);

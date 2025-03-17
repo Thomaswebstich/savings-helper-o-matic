@@ -1,7 +1,6 @@
 
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Legend, CartesianGrid, ComposedChart, Bar } from 'recharts';
-import { CURRENCY_SYMBOLS, Currency, formatCurrency } from '@/lib/data';
-import { ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Legend, CartesianGrid, ComposedChart, Bar, Tooltip } from 'recharts';
+import { CURRENCY_SYMBOLS, Currency, formatCurrency, convertCurrency } from '@/lib/data';
 
 interface DataPoint {
   date: string;
@@ -23,11 +22,42 @@ export function IncomeExpensesChart({
   displayCurrency, 
   showSavings 
 }: IncomeExpensesChartProps) {
+  // Convert data to display currency
+  const convertedData = visibleData.map(item => ({
+    ...item,
+    income: convertCurrency(item.income, 'THB', displayCurrency),
+    expenses: convertCurrency(item.expenses, 'THB', displayCurrency),
+    savings: convertCurrency(item.savings, 'THB', displayCurrency)
+  }));
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const item = payload[0]?.payload;
+      return (
+        <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
+          <p className="font-medium mb-1">{label}{item?.isProjection ? ' (Projected)' : ''}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={`tooltip-${index}`} className="flex justify-between gap-4">
+              <span style={{ color: entry.color }}>
+                {entry.dataKey === 'income' ? 'Income' : 
+                 entry.dataKey === 'expenses' ? 'Expenses' : 'Savings'}:
+              </span>
+              <span className="font-medium">
+                {formatCurrency(Number(entry.value), displayCurrency)}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       {showSavings ? (
         <ComposedChart
-          data={visibleData}
+          data={convertedData}
           margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
         >
           <defs>
@@ -38,10 +68,6 @@ export function IncomeExpensesChart({
             <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
               <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="savingsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
@@ -57,30 +83,7 @@ export function IncomeExpensesChart({
             axisLine={false}
             tickLine={false}
           />
-          <ChartTooltip 
-            content={(props) => {
-              const { active, payload, label } = props;
-              if (active && payload && payload.length) {
-                const item = payload[0]?.payload;
-                return (
-                  <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
-                    <p className="font-medium mb-1">{label}{item?.isProjection ? ' (Projected)' : ''}</p>
-                    {payload.map((entry, index) => (
-                      <div key={`tooltip-${index}`} className="flex justify-between gap-4">
-                        <span style={{ color: entry.color }}>
-                          {entry.name === 'income' ? 'Income' : entry.name === 'expenses' ? 'Expenses' : 'Savings'}:
-                        </span>
-                        <span className="font-medium">
-                          {formatCurrency(Number(entry.value), displayCurrency)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-              return null;
-            }}
-          />
+          <Tooltip content={<CustomTooltip />} />
           <Legend wrapperStyle={{ fontSize: '10px' }} />
           <Area 
             type="monotone" 
@@ -108,7 +111,7 @@ export function IncomeExpensesChart({
         </ComposedChart>
       ) : (
         <AreaChart
-          data={visibleData}
+          data={convertedData}
           margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
         >
           <defs>
@@ -134,30 +137,7 @@ export function IncomeExpensesChart({
             axisLine={false}
             tickLine={false}
           />
-          <ChartTooltip 
-            content={(props) => {
-              const { active, payload, label } = props;
-              if (active && payload && payload.length) {
-                const item = payload[0]?.payload;
-                return (
-                  <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
-                    <p className="font-medium mb-1">{label}{item?.isProjection ? ' (Projected)' : ''}</p>
-                    {payload.map((entry, index) => (
-                      <div key={`tooltip-${index}`} className="flex justify-between gap-4">
-                        <span style={{ color: entry.color }}>
-                          {entry.name === 'income' ? 'Income' : 'Expenses'}:
-                        </span>
-                        <span className="font-medium">
-                          {formatCurrency(Number(entry.value), displayCurrency)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-              return null;
-            }}
-          />
+          <Tooltip content={<CustomTooltip />} />
           <Legend wrapperStyle={{ fontSize: '10px' }} />
           <Area 
             type="monotone" 

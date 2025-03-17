@@ -32,6 +32,22 @@ export function SavingsChart({
     savings: convertCurrency(item.savings, "THB", displayCurrency)
   }));
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const value = Number(payload[0].value);
+      return (
+        <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
+          <p className="font-medium mb-1">{label}</p>
+          <div className="flex justify-between gap-4">
+            <span style={{ color: value >= 0 ? "#10b981" : "#f43f5e" }}>Savings:</span>
+            <span className="font-medium">{formatCurrency(value, displayCurrency)}</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <>
       <div className="h-[250px]">
@@ -50,23 +66,7 @@ export function SavingsChart({
               tickLine={false}
               tick={{ fontSize: 10 }}
             />
-            <Tooltip 
-              content={({ active, payload, label }) => {
-                if (active && payload && payload.length) {
-                  const value = Number(payload[0].value);
-                  return (
-                    <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
-                      <p className="font-medium mb-1">{label}</p>
-                      <div className="flex justify-between gap-4">
-                        <span style={{ color: value >= 0 ? "#10b981" : "#f43f5e" }}>Savings:</span>
-                        <span className="font-medium">{formatCurrency(value, displayCurrency)}</span>
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
+            <Tooltip content={<CustomTooltip />} />
             <Bar 
               dataKey="savings" 
               name="Savings" 

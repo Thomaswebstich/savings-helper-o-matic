@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ChartControlsProps {
   timeRange: {
@@ -30,6 +30,10 @@ export function ChartControls({
   className
 }: ChartControlsProps) {
   const [sliderValue, setSliderValue] = useState<number[]>([sliderPosition]);
+  
+  useEffect(() => {
+    setSliderValue([sliderPosition]);
+  }, [sliderPosition]);
   
   const handleSliderChange = (value: number[]) => {
     setSliderValue(value);

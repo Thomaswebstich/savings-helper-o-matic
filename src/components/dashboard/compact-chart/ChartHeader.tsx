@@ -16,7 +16,7 @@ export function ChartHeader({
   setShowSavings,
 }: ChartHeaderProps) {
   return (
-    <div className="flex justify-between items-center mb-2">
+    <div className="flex justify-between items-center mb-3">
       <div className="text-sm font-medium">
         {title} {projectedMonthsCount > 0 && (
           <span className="text-xs text-muted-foreground ml-1">
@@ -30,6 +30,7 @@ export function ChartHeader({
           id="show-savings" 
           checked={showSavings} 
           onCheckedChange={setShowSavings} 
+          className="data-[state=checked]:bg-green-500"
         />
         <Label htmlFor="show-savings" className="text-xs">Show Savings</Label>
       </div>

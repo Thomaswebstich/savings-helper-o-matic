@@ -64,17 +64,19 @@ export function IncomeExpensesCompactChart({
         />
       </CardHeader>
       <CardContent className="p-4 pt-2 pb-1">
-        <IncomeExpensesChart
-          visibleData={visibleData}
-          displayCurrency={displayCurrency}
-          showSavings={showSavings}
-        />
+        <div className="h-[250px]">
+          <IncomeExpensesChart
+            visibleData={visibleData}
+            displayCurrency={displayCurrency}
+            showSavings={showSavings}
+          />
+        </div>
       </CardContent>
       <CardFooter className="px-4 pt-2 pb-4">
         <ChartControls
           timeRange={timeRange}
           visibleMonths={visibleMonths}
-          totalDataLength={visibleData.length + visibleMonths.start}
+          totalDataLength={monthlyData.length}
           onSliderChange={handleSliderChange}
           onAdjustProjection={handleAdjustProjection}
           sliderPosition={sliderPosition}
