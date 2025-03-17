@@ -25,7 +25,7 @@ interface SavingsProjectionProps {
 }
 
 export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProjectionProps) {  
-  // Get saved yearly target from local storage
+  // Get saved yearly target from local storage (in THB)
   const savedYearlyTarget = useMemo(() => {
     const savedTarget = localStorage.getItem('yearlyTarget');
     return savedTarget ? Number(savedTarget) : 50000;
@@ -34,6 +34,11 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
   const [yearlyTarget, setYearlyTarget] = useState<number>(savedYearlyTarget);
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [tempTarget, setTempTarget] = useState<string>(yearlyTarget.toString());
+  
+  // Display target in current currency
+  const displayYearlyTarget = useMemo(() => 
+    convertCurrency(yearlyTarget, "THB", currency),
+  [yearlyTarget, currency]);
   
   // Get the current month's data
   const currentMonthData = useMemo(() => {
@@ -87,11 +92,18 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
     // Calculate projected yearly total
     const yearlyTotal = avgMonthlySavings * 12;
     
+    // Target is in THB but we need to compare it in display currency
+    const targetInDisplayCurrency = convertCurrency(yearlyTarget, "THB", currency);
+    
     // Calculate progress towards yearly goal
-    const progressTowardsYearlyGoal = (yearlyTotal / yearlyTarget) * 100;
+    const progressTowardsYearlyGoal = (yearlyTotal / targetInDisplayCurrency) * 100;
     
     // Calculate time to reach milestones (in months)
-    const milestones = [5000, 10000, 50000].map(amount => {
+    const milestoneBases = currency === "THB" ? [5000, 10000, 50000] : 
+                           currency === "USD" ? [100, 500, 1000] : 
+                           [100, 500, 1000]; // EUR
+    
+    const milestones = milestoneBases.map(amount => {
       const monthsToReach = avgMonthlySavings > 0 ? Math.ceil(amount / avgMonthlySavings) : 0;
       return {
         amount,
@@ -133,6 +145,7 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
   const handleTargetChange = () => {
     const newTarget = Number(tempTarget);
     if (!isNaN(newTarget) && newTarget > 0) {
+      // Store in THB for consistency
       setYearlyTarget(newTarget);
       localStorage.setItem('yearlyTarget', newTarget.toString());
     }
@@ -148,7 +161,7 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 gap-1">
                 <Target className="h-3.5 w-3.5" />
-                <span>Target: {formatCurrency(yearlyTarget, currency)}/year</span>
+                <span>Target: {formatCurrency(displayYearlyTarget, currency)}/year</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-3">
@@ -187,7 +200,7 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
               <div>
                 <div className="text-xs text-muted-foreground">This Month</div>
                 <div className="text-lg font-medium">
-                  {currentMonthData ? formatCurrency(currentMonthDisplayData.savings, currency) : `${CURRENCY_SYMBOLS[currency]}0.00`}
+                  {currentMonthData ? formatCurrency(currentMonthDisplayData.savings, currency) : `${CURRENCY_SYMBOLS[currency]}0`}
                 </div>
               </div>
             </div>
@@ -264,7 +277,7 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
                 : 0;
                 
               const projection = avgMonthlySaving * 12 * years;
-              const target = yearlyTarget * years;
+              const target = convertCurrency(yearlyTarget, "THB", currency) * years;
               const progressPercentage = (projection / target) * 100;
               
               return (

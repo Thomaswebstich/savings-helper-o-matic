@@ -30,6 +30,8 @@ interface CategoryObject {
 
 // Extract the actual color value from category color class string
 export function extractColorFromClass(colorClass: string): string {
+  if (!colorClass) return '#0ea5e9'; // Default blue if no color class provided
+  
   // Map of Tailwind color classes to hex codes
   const colorMap: Record<string, string> = {
     'bg-blue-100': '#0ea5e9', // blue
@@ -42,6 +44,14 @@ export function extractColorFromClass(colorClass: string): string {
     'bg-sky-100': '#0ea5e9', // sky
     'bg-indigo-100': '#6366f1', // indigo
     'bg-gray-100': '#94a3b8', // gray/slate
+    'bg-pink-100': '#ec4899', // pink
+    'bg-rose-100': '#f43f5e', // rose
+    'bg-violet-100': '#8b5cf6', // violet
+    'bg-fuchsia-100': '#d946ef', // fuchsia
+    'bg-teal-100': '#14b8a6', // teal
+    'bg-cyan-100': '#06b6d4', // cyan
+    'bg-lime-100': '#84cc16', // lime
+    'bg-amber-100': '#f59e0b', // amber
   };
   
   // Extract the base color from the class name (e.g., "bg-blue-100 text-blue-600..." -> "bg-blue-100")

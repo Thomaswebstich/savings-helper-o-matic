@@ -1,7 +1,7 @@
 
 import { formatCurrency, Currency } from '@/lib/data';
 import { StackedBar } from '@/components/ui/stacked-bar';
-import { getCategoryColor, getStackedBarData } from '../utils/category-breakdown-utils';
+import { getCategoryColor, getStackedBarData, extractColorFromClass } from '../utils/category-breakdown-utils';
 
 interface CategoryInfo {
   id: string;
@@ -39,18 +39,24 @@ export function CategoryPeriodBreakdown({
       <div className="mb-4 mt-2">
         <StackedBar segments={getStackedBarData(categoryData)} height={8} className="mb-2" />
         <div className="flex flex-wrap gap-2 text-xs">
-          {categoryData.slice(0, 5).map((category, idx) => (
-            <span key={category.id} className="inline-flex items-center gap-1">
-              <span 
-                className="inline-block h-2 w-2 rounded-sm" 
-                style={{ backgroundColor: category.color || getCategoryColor(category.id, idx, categoryData) }}
-              />
-              <span>{category.name}</span>
-              <span className="text-muted-foreground">
-                {category.percentage?.toFixed(1)}%
+          {categoryData.slice(0, 5).map((category, idx) => {
+            const colorHex = category.color 
+              ? extractColorFromClass(category.color) 
+              : getCategoryColor(category.id, idx, categoryData);
+              
+            return (
+              <span key={category.id} className="inline-flex items-center gap-1">
+                <span 
+                  className="inline-block h-2 w-2 rounded-sm" 
+                  style={{ backgroundColor: colorHex }}
+                />
+                <span>{category.name}</span>
+                <span className="text-muted-foreground">
+                  {category.percentage?.toFixed(1)}%
+                </span>
               </span>
-            </span>
-          ))}
+            );
+          })}
         </div>
       </div>
       
@@ -58,6 +64,11 @@ export function CategoryPeriodBreakdown({
         {categoryData.map((category, index) => {
           // Calculate average for the time period
           const avgAmount = category.total / divisor;
+          
+          // Get the correct color
+          const colorHex = category.color 
+            ? extractColorFromClass(category.color)
+            : getCategoryColor(category.id, index, categoryData);
           
           return (
             <div 
@@ -67,7 +78,7 @@ export function CategoryPeriodBreakdown({
               <div className="flex items-center">
                 <div 
                   className="w-2 h-8 rounded-sm mr-2" 
-                  style={{ backgroundColor: category.color || getCategoryColor(category.id, index, categoryData) }} 
+                  style={{ backgroundColor: colorHex }} 
                 />
                 <div>
                   <div className="text-sm font-medium truncate max-w-[120px]">{category.name}</div>

@@ -544,6 +544,7 @@ export const formatCurrency = (amount: number, currency: Currency = "THB"): stri
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
-    minimumFractionDigits: 2
+    minimumFractionDigits: currency === "THB" ? 0 : 2,
+    maximumFractionDigits: currency === "THB" ? 0 : 2
   }).format(amount);
 };
