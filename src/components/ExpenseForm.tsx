@@ -57,17 +57,23 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
   useEffect(() => {
     if (initialValues) {
       console.log("Setting form values with:", initialValues);
+      
+      // Ensure the date is a proper Date object
+      const expenseDate = initialValues.date instanceof Date 
+        ? initialValues.date 
+        : new Date(initialValues.date);
+      
       // If we have initial values, set them in the form
       form.reset({
         description: initialValues.description,
         amount: initialValues.amount,
-        date: initialValues.date instanceof Date 
-          ? initialValues.date 
-          : new Date(initialValues.date),
-        category: initialValues.categoryId || '', // Use categoryId primarily
+        date: expenseDate,
+        category: initialValues.categoryId || '', // Use categoryId as the primary identifier
         isRecurring: initialValues.isRecurring,
         recurrenceInterval: initialValues.recurrenceInterval,
-        stopDate: initialValues.stopDate,
+        stopDate: initialValues.stopDate instanceof Date 
+          ? initialValues.stopDate 
+          : initialValues.stopDate ? new Date(initialValues.stopDate) : undefined,
         currency: initialValues.currency
       });
     } else {

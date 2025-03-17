@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
@@ -259,12 +260,14 @@ export default function Index() {
   
   const handleFormSubmit = async (data: ExpenseFormValues) => {
     console.log("Form submitted with data:", data);
+    
     if (currentExpense) {
-      let categoryId = data.category; // Use data.category directly as it should already be the categoryId
+      // For editing an existing expense
+      let categoryId = data.category;
       
-      // If it's not a valid ID (e.g., it's a name), try to find the ID
+      // If it looks like a category name rather than an ID, try to find the matching ID
       if (categoryId && !categories.some(c => c.id === categoryId)) {
-        const foundCategory = categories.find(c => c.name === data.category);
+        const foundCategory = categories.find(c => c.name === categoryId);
         if (foundCategory) {
           categoryId = foundCategory.id;
         }
@@ -272,12 +275,20 @@ export default function Index() {
       
       console.log("Updating expense with categoryId:", categoryId);
       
-      const updatedExpense = { 
+      const updatedExpense: Expense = { 
         ...currentExpense, 
-        ...data,
-        categoryId
+        description: data.description,
+        amount: data.amount,
+        date: data.date,
+        categoryId: categoryId,
+        category: categories.find(c => c.id === categoryId)?.name || '',
+        isRecurring: data.isRecurring,
+        recurrenceInterval: data.recurrenceInterval,
+        stopDate: data.stopDate,
+        currency: data.currency
       };
       
+      // Update the local state first
       setExpenses(prev => 
         prev.map(exp => 
           exp.id === currentExpense.id 
@@ -287,13 +298,14 @@ export default function Index() {
       );
       
       try {
+        // Format the data for Supabase
         const { error } = await supabase
           .from('expenses')
           .update({
             description: data.description,
             amount: data.amount,
             date: data.date.toISOString().split('T')[0],
-            category: data.category, // Keep for backward compatibility
+            category: categories.find(c => c.id === categoryId)?.name || '',
             category_id: categoryId,
             is_recurring: data.isRecurring,
             recurrence_interval: data.recurrenceInterval,
@@ -317,8 +329,10 @@ export default function Index() {
         });
       }
       
+      // Clear the current expense after update
       setCurrentExpense(null);
     } else {
+      // For adding a new expense
       handleAddExpense(data);
     }
   };
