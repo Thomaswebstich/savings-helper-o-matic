@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Category, CategoryBudget, Expense, CategoryTotal } from './types';
+import { Category, CategoryBudget, Expense, CategoryTotal, Currency } from './types';
 import { convertCurrency } from './currency-utils';
 
 export const CATEGORY_ICONS = [
@@ -87,7 +87,7 @@ export const fetchCategoryBudgets = async (month?: string): Promise<CategoryBudg
     id: item.id,
     categoryId: item.category_id,
     amount: Number(item.amount),
-    currency: item.currency,
+    currency: item.currency as Currency, // Type cast to Currency type
     month: item.month
   })) || [];
 };
