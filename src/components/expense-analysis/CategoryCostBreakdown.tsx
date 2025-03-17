@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { TabsContent } from "@/components/ui/tabs";
 import { Expense, formatCurrency, Currency, convertCurrency } from '@/lib/data';
 import { StackedBar } from '@/components/ui/stacked-bar';
+import { startOfDay, endOfDay, differenceInDays, differenceInWeeks, differenceInMonths } from 'date-fns';
 
 interface CategoryCostBreakdownProps {
   filteredExpenses: Expense[];
@@ -36,13 +37,19 @@ export function CategoryCostBreakdown({
     filteredExpenses.forEach(expense => {
       const categoryId = expense.categoryId || 'uncategorized';
       const categoryName = expense.category || 'Uncategorized';
+      // Extract the color from the category field if it has a color property
+      let color;
+      if (typeof expense.category === 'object' && expense.category && 'color' in expense.category) {
+        color = (expense.category as any).color;
+      }
       
       if (!categoryMap.has(categoryId)) {
         categoryMap.set(categoryId, {
           id: categoryId,
           name: categoryName,
           total: 0,
-          count: 0
+          count: 0,
+          color
         });
       }
       
@@ -53,9 +60,13 @@ export function CategoryCostBreakdown({
     
     // Find date range
     const dates = filteredExpenses.map(e => e.date instanceof Date ? e.date : new Date(e.date));
-    const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
-    const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
-    const daysDiff = Math.max(1, Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const minDate = startOfDay(new Date(Math.min(...dates.map(d => d.getTime()))));
+    const maxDate = endOfDay(new Date(Math.max(...dates.map(d => d.getTime()))));
+    
+    // Calculate period differences for accurate averages
+    const daysDiff = Math.max(1, differenceInDays(maxDate, minDate) + 1); // +1 to include both start and end days
+    const weeksDiff = Math.max(0.143, differenceInWeeks(maxDate, minDate) + 0.143); // +0.143 (1/7) to avoid division by zero
+    const monthsDiff = Math.max(0.033, differenceInMonths(maxDate, minDate) + 0.033); // +0.033 (1/30) to avoid division by zero
     
     // Calculate total for percentages
     const totalSpending = filteredExpenses.reduce((sum, expense) => 
@@ -64,8 +75,8 @@ export function CategoryCostBreakdown({
     // Calculate time period stats for correct averages
     const timePeriodStats = {
       days: daysDiff,
-      weeks: daysDiff / 7,
-      months: daysDiff / 30
+      weeks: weeksDiff,
+      months: monthsDiff
     };
     
     // Sort by amount
@@ -95,6 +106,10 @@ export function CategoryCostBreakdown({
       "#94a3b8"  // slate
     ];
     
+    // Check if this category already has a color in our data
+    const categoryInfo = categoryData.find(c => c.id === categoryId);
+    if (categoryInfo?.color) return categoryInfo.color;
+    
     // Use index or hash the category ID for consistent color
     if (index !== undefined) return colors[index % colors.length];
     
@@ -110,7 +125,7 @@ export function CategoryCostBreakdown({
     return categoryData.map((category, index) => ({
       id: category.id,
       value: category.percentage,
-      color: getCategoryColor(category.id, index)
+      color: category.color || getCategoryColor(category.id, index)
     }));
   };
   
@@ -140,7 +155,7 @@ export function CategoryCostBreakdown({
               <span key={category.id} className="inline-flex items-center gap-1">
                 <span 
                   className="inline-block h-2 w-2 rounded-sm" 
-                  style={{ backgroundColor: getCategoryColor(category.id, idx) }}
+                  style={{ backgroundColor: category.color || getCategoryColor(category.id, idx) }}
                 />
                 <span>{category.name}</span>
                 <span className="text-muted-foreground">
@@ -164,7 +179,7 @@ export function CategoryCostBreakdown({
                 <div className="flex items-center">
                   <div 
                     className="w-2 h-8 rounded-sm mr-2" 
-                    style={{ backgroundColor: getCategoryColor(category.id, index) }} 
+                    style={{ backgroundColor: category.color || getCategoryColor(category.id, index) }} 
                   />
                   <div>
                     <div className="text-sm font-medium truncate max-w-[120px]">{category.name}</div>

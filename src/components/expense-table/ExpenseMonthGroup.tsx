@@ -62,14 +62,25 @@ export function ExpenseMonthGroup({
   const getStackedBarData = () => {
     if (group.categoryTotals.size === 0) return [];
     
+    const totalAmount = group.total;
+    
     return Array.from(group.categoryTotals.entries())
       .sort((a, b) => b[1] - a[1]) // Sort by amount (highest first)
       .map(([categoryId, amount]) => {
-        const percentage = (amount / group.total) * 100;
+        // Calculate percentage based on the total amount for this month
+        const percentage = totalAmount > 0 ? (amount / totalAmount) * 100 : 0;
+        
+        // Get the category color from the categoryMap if available
+        let color = getCategoryColor(categoryId);
+        const category = categoryMap.get(categoryId);
+        if (category && category.color) {
+          color = category.color;
+        }
+        
         return {
           id: categoryId,
           value: percentage,
-          color: getCategoryColor(categoryId)
+          color: color
         };
       });
   };
@@ -102,9 +113,9 @@ export function ExpenseMonthGroup({
               <StackedBar 
                 segments={getStackedBarData()} 
                 height={4}
-                className="mb-1"
+                className="mb-1.5"
               />
-              <div className="flex flex-wrap gap-1 text-xs">
+              <div className="flex flex-wrap gap-2 text-xs">
                 {getStackedBarData()
                   .slice(0, 3) // Only show top 3 categories in the legend
                   .map(segment => {
