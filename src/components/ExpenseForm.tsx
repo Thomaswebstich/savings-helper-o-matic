@@ -13,17 +13,18 @@ import { format } from 'date-fns';
 import { CalendarIcon, Check, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Expense, Category, CATEGORIES, Currency, EXCHANGE_RATES } from '@/lib/data';
+import { Expense, Category, Currency, EXCHANGE_RATES } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
 // Define the form values type
 export type ExpenseFormValues = Omit<Expense, 'id'>;
 
+// Create a schema for string categories
 const formSchema = z.object({
   description: z.string().min(1, { message: 'Description is required' }),
   amount: z.number().min(0.01, { message: 'Amount must be greater than 0' }),
   date: z.date(),
-  category: z.enum(CATEGORIES as [Category, ...Category[]]),
+  category: z.string().min(1, { message: 'Category is required' }),
   isRecurring: z.boolean().default(false),
   recurrenceInterval: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
   stopDate: z.date().optional(),
@@ -35,9 +36,10 @@ interface ExpenseFormProps {
   onClose: () => void;
   onSubmit: (data: ExpenseFormValues) => void;
   initialValues?: Expense | null;
+  categories: Category[];
 }
 
-export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseFormProps) {
+export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories }: ExpenseFormProps) {
   // Initialize form with react-hook-form
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(formSchema),
@@ -45,7 +47,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
       description: '',
       amount: 0,
       date: new Date(),
-      category: 'Other',
+      category: '',
       isRecurring: false,
       currency: 'THB'
     }
@@ -61,7 +63,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
         date: initialValues.date instanceof Date 
           ? initialValues.date 
           : new Date(initialValues.date),
-        category: initialValues.category,
+        category: initialValues.category || initialValues.categoryId || '',
         isRecurring: initialValues.isRecurring,
         recurrenceInterval: initialValues.recurrenceInterval,
         stopDate: initialValues.stopDate,
@@ -73,7 +75,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
         description: '',
         amount: 0,
         date: new Date(),
-        category: 'Other',
+        category: '',
         isRecurring: false,
         currency: 'THB'
       });
@@ -220,9 +222,9 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {CATEGORIES.map(category => (
-                          <SelectItem key={category} value={category}>
-                            {category}
+                        {categories.map(category => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -1,6 +1,6 @@
 
 import { useState, useMemo } from 'react';
-import { Expense, Category, CATEGORIES, formatCurrency } from '@/lib/data';
+import { Expense, Category, formatCurrency } from '@/lib/data';
 import { CategoryBadge } from './CategoryBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ import {
 
 interface ExpenseTableProps {
   expenses: Expense[];
+  categories: Category[];
   onAddExpense?: () => void;
   onEditExpense?: (expense: Expense) => void;
   onDeleteExpense?: (id: string) => void;
@@ -40,13 +41,22 @@ interface MonthGroup {
   total: number;
 }
 
-export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteExpense }: ExpenseTableProps) {
+export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense, onDeleteExpense }: ExpenseTableProps) {
   const [search, setSearch] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Expense; direction: 'asc' | 'desc' }>({ 
     key: 'date', direction: 'desc' 
   });
   const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
+  
+  // Create a category map for easier lookups
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, Category>();
+    categories.forEach(category => {
+      map.set(category.id, category);
+    });
+    return map;
+  }, [categories]);
   
   // Filter expenses based on search and category filters
   const filteredExpenses = useMemo(() => {
@@ -58,7 +68,7 @@ export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteEx
       
       // Filter by selected categories
       const matchesCategory = selectedCategories.length === 0 || 
-        selectedCategories.includes(expense.category);
+        selectedCategories.includes(expense.categoryId);
       
       return matchesSearch && matchesCategory;
     });
@@ -124,9 +134,11 @@ export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteEx
         }
         
         if (sortConfig.key === 'category') {
+          const catA = categoryMap.get(a.categoryId)?.name || '';
+          const catB = categoryMap.get(b.categoryId)?.name || '';
           return sortConfig.direction === 'asc'
-            ? a.category.localeCompare(b.category)
-            : b.category.localeCompare(a.category);
+            ? catA.localeCompare(catB)
+            : catB.localeCompare(catA);
         }
         
         return 0;
@@ -137,7 +149,7 @@ export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteEx
     
     // Sort month groups by date (most recent first)
     return groups.sort((a, b) => b.month.getTime() - a.month.getTime());
-  }, [filteredExpenses, sortConfig]);
+  }, [filteredExpenses, sortConfig, categoryMap]);
   
   // Toggle sort
   const requestSort = (key: keyof Expense) => {
@@ -149,11 +161,11 @@ export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteEx
   };
   
   // Toggle category filter
-  const toggleCategory = (category: Category) => {
+  const toggleCategory = (categoryId: string) => {
     setSelectedCategories(prev => 
-      prev.includes(category)
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
+      prev.includes(categoryId)
+        ? prev.filter(c => c !== categoryId)
+        : [...prev, categoryId]
     );
   };
   
@@ -183,6 +195,23 @@ export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteEx
     return expandedMonths.includes(monthKey);
   };
 
+  // Get category for an expense
+  const getCategory = (expense: Expense) => {
+    // First check if we have a categoryId that maps to a category
+    if (expense.categoryId) {
+      const category = categoryMap.get(expense.categoryId);
+      if (category) return category;
+    }
+    
+    // Fall back to the legacy category string if available
+    if (expense.category) {
+      return expense.category;
+    }
+    
+    // Default fallback
+    return "Other";
+  };
+
   return (
     <div className="overflow-hidden rounded-xl border border-border animate-fade-in">
       <div className="bg-muted/50 px-4 py-3 flex flex-col md:flex-row gap-3 justify-between items-start md:items-center">
@@ -207,11 +236,11 @@ export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteEx
             <DropdownMenuContent align="end" className="w-52">
               <div className="p-2">
                 <div className="mb-2 text-xs font-medium">Categories</div>
-                {CATEGORIES.map(category => (
+                {categories.map(category => (
                   <DropdownMenuCheckboxItem
-                    key={category}
-                    checked={selectedCategories.includes(category)}
-                    onCheckedChange={() => toggleCategory(category)}
+                    key={category.id}
+                    checked={selectedCategories.includes(category.id)}
+                    onCheckedChange={() => toggleCategory(category.id)}
                   >
                     <CategoryBadge category={category} withLabel />
                   </DropdownMenuCheckboxItem>
@@ -337,7 +366,7 @@ export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteEx
                                     : format(new Date(expense.date), 'MMM d, yyyy')}
                                 </td>
                                 <td>
-                                  <CategoryBadge category={expense.category} />
+                                  <CategoryBadge category={getCategory(expense)} />
                                 </td>
                                 <td>
                                   {expense.isRecurring && (
