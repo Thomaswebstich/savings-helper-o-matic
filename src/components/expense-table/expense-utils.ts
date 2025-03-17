@@ -17,7 +17,7 @@ export function generateProjectedExpenses(expenses: Expense[]): Expense[] {
   const today = new Date();
   today.setHours(12, 0, 0, 0);
   
-  // Project for 12 months forward
+  // Project for 12 months forward (was already set to 12)
   const maxProjectionDate = addMonths(today, 12);
   
   recurringExpenses.forEach(expense => {

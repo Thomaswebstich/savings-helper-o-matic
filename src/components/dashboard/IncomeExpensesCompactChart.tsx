@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, YAxis, ComposedChart, CartesianGrid, Legend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,11 +19,10 @@ export function IncomeExpensesCompactChart({
   const [data, setData] = useState<Array<{ date: string; month: string; income: number; expenses: number; savings: number; isProjection: boolean }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSavings, setShowSavings] = useState(false);
-  const [timeRange, setTimeRange] = useState({ monthsBack: 9, monthsForward: 3 });
+  const [timeRange, setTimeRange] = useState({ monthsBack: 9, monthsForward: 12 });
   const [sliderPosition, setSliderPosition] = useState(0);
   const [visibleMonths, setVisibleMonths] = useState({ start: 0, end: 12 });
   
-  // Transform data when monthlyData changes
   useEffect(() => {
     setIsLoading(true);
     
@@ -34,11 +32,9 @@ export function IncomeExpensesCompactChart({
       const currentYear = currentDate.getFullYear();
       
       const transformedData = monthlyData.map((month, index) => {
-        // Parse the month string to get a proper date
         const [monthName, yearStr] = month.month.split(' ');
         const date = new Date(`${monthName} 1, ${yearStr}`);
         
-        // Determine if this is a projection (future month)
         const isProjection = (date.getFullYear() > currentYear) || 
                              (date.getFullYear() === currentYear && date.getMonth() > currentMonth);
         
@@ -54,8 +50,15 @@ export function IncomeExpensesCompactChart({
       
       setData(transformedData);
       
-      // Set the initial slider position to show the most recent data
-      const initialPosition = Math.max(0, transformedData.length - 12);
+      const currentMonthIndex = transformedData.findIndex(item => {
+        const itemDate = new Date(item.date);
+        return itemDate.getMonth() === currentMonth && itemDate.getFullYear() === currentYear;
+      });
+      
+      const initialPosition = currentMonthIndex >= 0 
+        ? Math.max(0, Math.min(currentMonthIndex, transformedData.length - 12))
+        : Math.max(0, transformedData.length - 12);
+      
       setSliderPosition(initialPosition);
       setVisibleMonths({
         start: initialPosition,
@@ -69,7 +72,6 @@ export function IncomeExpensesCompactChart({
     }
   }, [monthlyData]);
   
-  // Handle slider change
   const handleSliderChange = (value: number[]) => {
     const newStart = value[0];
     const newEnd = Math.min(newStart + 12, data.length);
@@ -78,7 +80,6 @@ export function IncomeExpensesCompactChart({
     setVisibleMonths({ start: newStart, end: newEnd });
   };
   
-  // Handle projection adjustment
   const handleAdjustProjection = (change: number) => {
     const newMonthsForward = Math.max(1, Math.min(12, timeRange.monthsForward + change));
     
@@ -87,7 +88,7 @@ export function IncomeExpensesCompactChart({
     setTimeRange(prev => ({ 
       ...prev, 
       monthsForward: newMonthsForward,
-      monthsBack: prev.monthsBack + (change * -1) // Adjust monthsBack inversely
+      monthsBack: 21 - newMonthsForward 
     }));
   };
   
@@ -104,23 +105,19 @@ export function IncomeExpensesCompactChart({
     );
   }
   
-  // Get visible data based on current range
   const visibleData = data.slice(visibleMonths.start, visibleMonths.end);
   
-  // Calculate current month income & expenses if available
   const currentData = visibleData.length > 0 ? visibleData[visibleData.length - 1] : { income: 0, expenses: 0, savings: 0 };
   
-  // Calculate percent change from previous month
   const prevData = visibleData.length > 1 ? visibleData[visibleData.length - 2] : null;
   const incomeChange = prevData && prevData.income ? ((currentData.income - prevData.income) / prevData.income) * 100 : 0;
   const expenseChange = prevData && prevData.expenses ? ((currentData.expenses - prevData.expenses) / prevData.expenses) * 100 : 0;
   const savingsChange = prevData && prevData.savings ? ((currentData.savings - prevData.savings) / prevData.savings) * 100 : 0;
   
   const isIncomePositive = incomeChange >= 0;
-  const isExpensePositive = expenseChange <= 0; // Expenses going down is positive
+  const isExpensePositive = expenseChange <= 0;
   const isSavingsPositive = savingsChange >= 0;
   
-  // Count projected months
   const projectedMonthsCount = visibleData.filter(d => d.isProjection).length;
   
   return (
@@ -256,7 +253,7 @@ export function IncomeExpensesCompactChart({
                 dataKey="savings" 
                 name="Savings" 
                 fill="#10b981" 
-                fillOpacity={0.35}
+                fillOpacity={0.25}
                 radius={[4, 4, 0, 0]}
               />
             </ComposedChart>

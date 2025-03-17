@@ -8,7 +8,7 @@ export const calculateMonthlyTotals = (
   expenses: Expense[],
   incomeSources: IncomeSource[],
   monthsBack = 6, 
-  monthsForward = 3
+  monthsForward = 12  // Default to 12 months forward
 ): MonthlyTotal[] => {
   const result: MonthlyTotal[] = [];
   const currentDate = new Date();
@@ -30,7 +30,8 @@ export const calculateMonthlyTotals = (
       return sum + amountInTHB;
     }, 0);
     
-    const monthlyIncome = calculateTotalMonthlyIncome(incomeSources);
+    // Calculate income taking start dates into account
+    const monthlyIncome = calculateMonthIncomeForDate(incomeSources, monthStart);
     
     const savings = monthlyIncome - totalExpenses;
     
@@ -104,7 +105,8 @@ export const calculateMonthlyTotals = (
       
     projectedExpenses += avgNonRecurring;
     
-    const monthlyIncome = calculateTotalMonthlyIncome(incomeSources);
+    // Calculate future income taking start dates and end dates into account
+    const monthlyIncome = calculateMonthIncomeForDate(incomeSources, monthStart);
     
     const projectedSavings = monthlyIncome - projectedExpenses;
     
@@ -118,3 +120,44 @@ export const calculateMonthlyTotals = (
   
   return result;
 };
+
+// Helper function to calculate income for a specific month
+function calculateMonthIncomeForDate(incomeSources: IncomeSource[], monthDate: Date): number {
+  return incomeSources.reduce((total, income) => {
+    // Skip if income hasn't started yet or has already ended
+    const startDate = new Date(income.startDate);
+    const endDate = income.endDate ? new Date(income.endDate) : null;
+    
+    if (startDate > monthDate || (endDate && endDate < monthDate)) {
+      return total;
+    }
+    
+    const amountInTHB = convertCurrency(income.amount, income.currency, "THB");
+    
+    if (income.isRecurring) {
+      switch (income.recurrenceInterval) {
+        case "daily":
+          return total + (amountInTHB * 30);
+        case "weekly":
+          return total + (amountInTHB * 4.3);
+        case "monthly":
+          return total + amountInTHB;
+        case "yearly":
+          if (startDate.getMonth() === monthDate.getMonth()) {
+            return total + amountInTHB;
+          }
+          return total;
+        default:
+          return total + amountInTHB; // Default to monthly
+      }
+    } else if (
+      startDate.getMonth() === monthDate.getMonth() && 
+      startDate.getFullYear() === monthDate.getFullYear()
+    ) {
+      // Non-recurring income only gets counted in its specific month
+      return total + amountInTHB;
+    }
+    
+    return total;
+  }, 0);
+}

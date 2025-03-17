@@ -31,7 +31,20 @@ export function useFinancialCalculations({
   const currentMonthData = useMemo(() => {
     if (monthlyData.length === 0) return null;
     
-    const data = monthlyData[monthlyData.length - timeRange.monthsForward - 1];
+    // Find the index of the current month (the one right before projections start)
+    const currentMonthIndex = monthlyData.findIndex((month, index, array) => {
+      if (index < array.length - 1) {
+        const currentDate = new Date(month.month);
+        const nextDate = new Date(array[index + 1].month);
+        return nextDate > currentDate && nextDate > new Date();
+      }
+      return false;
+    });
+    
+    const data = currentMonthIndex >= 0 
+      ? monthlyData[currentMonthIndex] 
+      : monthlyData[monthlyData.length - timeRange.monthsForward - 1] || null;
+      
     if (!data) return null;
     
     return {
