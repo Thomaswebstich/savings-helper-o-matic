@@ -1,6 +1,6 @@
 
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Legend, CartesianGrid, ComposedChart, Bar } from 'recharts';
-import { CURRENCY_SYMBOLS, Currency } from '@/lib/data';
+import { CURRENCY_SYMBOLS, Currency, formatCurrency } from '@/lib/data';
 import { ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 interface DataPoint {
@@ -71,7 +71,7 @@ export function IncomeExpensesChart({
                           {entry.name === 'income' ? 'Income' : entry.name === 'expenses' ? 'Expenses' : 'Savings'}:
                         </span>
                         <span className="font-medium">
-                          {`${CURRENCY_SYMBOLS[displayCurrency]}${Number(entry.value).toLocaleString()}`}
+                          {formatCurrency(Number(entry.value), displayCurrency)}
                         </span>
                       </div>
                     ))}
@@ -148,7 +148,7 @@ export function IncomeExpensesChart({
                           {entry.name === 'income' ? 'Income' : 'Expenses'}:
                         </span>
                         <span className="font-medium">
-                          {`${CURRENCY_SYMBOLS[displayCurrency]}${Number(entry.value).toLocaleString()}`}
+                          {formatCurrency(Number(entry.value), displayCurrency)}
                         </span>
                       </div>
                     ))}

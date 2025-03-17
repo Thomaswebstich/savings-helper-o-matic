@@ -1,12 +1,13 @@
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Currency, MonthlyTotal } from '@/lib/data';
 import { useChartData } from './useChartData';
 import { ChartHeader } from './ChartHeader';
 import { ChartSummary } from './ChartSummary';
 import { IncomeExpensesChart } from './IncomeExpensesChart';
+import { ChartControls } from '@/components/charts/ChartControls';
 
 interface IncomeExpensesCompactChartProps {
   monthlyData: MonthlyTotal[];
@@ -53,12 +54,6 @@ export function IncomeExpensesCompactChart({
           projectedMonthsCount={projectedMonthsCount}
           showSavings={showSavings}
           setShowSavings={setShowSavings}
-          timeRange={timeRange}
-          visibleMonths={visibleMonths}
-          totalDataLength={visibleData.length + visibleMonths.start}
-          onSliderChange={handleSliderChange}
-          onAdjustProjection={handleAdjustProjection}
-          sliderPosition={sliderPosition}
         />
         
         <ChartSummary
@@ -75,6 +70,17 @@ export function IncomeExpensesCompactChart({
           showSavings={showSavings}
         />
       </CardContent>
+      <CardFooter className="px-4 pt-0 pb-4">
+        <ChartControls
+          timeRange={timeRange}
+          visibleMonths={visibleMonths}
+          totalDataLength={visibleData.length + visibleMonths.start}
+          onSliderChange={handleSliderChange}
+          onAdjustProjection={handleAdjustProjection}
+          sliderPosition={sliderPosition}
+          className="w-full"
+        />
+      </CardFooter>
     </Card>
   );
 }
