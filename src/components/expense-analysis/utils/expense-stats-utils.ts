@@ -63,7 +63,7 @@ export function calculateSpendingTrend(filteredExpenses: Expense[], currency: Cu
   const trend = ((recentTotal - olderTotal) / olderTotal) * 100;
   
   return {
-    trend: Math.abs(trend),
+    trend: Math.abs(Math.round(trend)),
     isPositive: trend <= 0 // Lower spending is positive
   };
 }

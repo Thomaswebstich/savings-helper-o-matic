@@ -52,7 +52,7 @@ export function CategoryPeriodBreakdown({
                 />
                 <span>{category.name}</span>
                 <span className="text-muted-foreground">
-                  {category.percentage?.toFixed(1)}%
+                  {Math.round(category.percentage || 0)}%
                 </span>
               </span>
             );
@@ -82,7 +82,7 @@ export function CategoryPeriodBreakdown({
                 />
                 <div>
                   <div className="text-sm font-medium truncate max-w-[120px]">{category.name}</div>
-                  <div className="text-xs text-muted-foreground">{category.percentage?.toFixed(1)}% of total</div>
+                  <div className="text-xs text-muted-foreground">{Math.round(category.percentage || 0)}% of total</div>
                 </div>
               </div>
               <div className="text-right">

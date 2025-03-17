@@ -17,7 +17,7 @@ export function SpendingTrend({ trend, isPositive }: SpendingTrendProps) {
         <TrendingUp className="h-4 w-4 text-red-500 mr-1" />
       )}
       <span className="text-xs">
-        {isPositive ? 'Down' : 'Up'} {trend.toFixed(1)}% from previous period
+        {isPositive ? 'Down' : 'Up'} {Math.round(trend)}% from previous period
       </span>
     </div>
   );

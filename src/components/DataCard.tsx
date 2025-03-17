@@ -31,7 +31,7 @@ export function DataCard({ title, value, icon, description, trend, className }: 
             trend.isPositive ? "text-emerald-500" : "text-red-500"
           )}>
             <span>{trend.isPositive ? "↑" : "↓"}</span>
-            <span>{Math.abs(trend.value)}%</span>
+            <span>{Math.round(trend.value)}%</span>
           </div>
         )}
       </div>

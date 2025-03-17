@@ -26,7 +26,7 @@ export function ExpenseMonthStackedBar({
       .sort((a, b) => b[1] - a[1]) // Sort by amount (highest first)
       .map(([categoryId, amount]) => {
         // Calculate percentage based on the total amount for this month
-        const percentage = totalAmount > 0 ? (amount / totalAmount) * 100 : 0;
+        const percentage = totalAmount > 0 ? Math.round((amount / totalAmount) * 100) : 0;
         
         // Get the category color from the categoryMap first (prioritize taxonomy color)
         const category = categoryMap.get(categoryId);
