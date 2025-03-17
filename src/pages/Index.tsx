@@ -13,7 +13,6 @@ import { ExpenseTableWrapper } from '@/components/dashboard/ExpenseTableWrapper'
 export default function Index() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
-  // Use our refactored hook for data and actions
   const {
     expenses,
     setExpenses,
