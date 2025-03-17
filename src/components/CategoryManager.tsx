@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Dialog,
@@ -27,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Plus, Trash2 } from 'lucide-react';
+import { Edit, Plus, Trash2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { 
   Category,
@@ -92,6 +91,70 @@ export function CategoryManager() {
     setIcon(CATEGORY_ICONS[0]);
     setColor(COLORS[0].value);
   };
+
+  const moveCategoryUp = async (index: number) => {
+    if (index <= 0) return; // Already at the top
+    
+    const newCategories = [...categories];
+    const categoryToMove = newCategories[index];
+    const categoryAbove = newCategories[index - 1];
+    
+    try {
+      await updateCategory(categoryToMove.id, { 
+        displayOrder: categoryToMove.displayOrder !== undefined ? index - 1 : index - 1 
+      });
+      await updateCategory(categoryAbove.id, { 
+        displayOrder: categoryAbove.displayOrder !== undefined ? index : index 
+      });
+      
+      [newCategories[index], newCategories[index - 1]] = [newCategories[index - 1], newCategories[index]];
+      setCategories(newCategories);
+      
+      toast({
+        title: "Success",
+        description: "Category order updated"
+      });
+    } catch (error) {
+      console.error('Error updating category order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update category order",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const moveCategoryDown = async (index: number) => {
+    if (index >= categories.length - 1) return; // Already at the bottom
+    
+    const newCategories = [...categories];
+    const categoryToMove = newCategories[index];
+    const categoryBelow = newCategories[index + 1];
+    
+    try {
+      await updateCategory(categoryToMove.id, { 
+        displayOrder: categoryToMove.displayOrder !== undefined ? index + 1 : index + 1 
+      });
+      await updateCategory(categoryBelow.id, { 
+        displayOrder: categoryBelow.displayOrder !== undefined ? index : index 
+      });
+      
+      [newCategories[index], newCategories[index + 1]] = [newCategories[index + 1], newCategories[index]];
+      setCategories(newCategories);
+      
+      toast({
+        title: "Success",
+        description: "Category order updated"
+      });
+    } catch (error) {
+      console.error('Error updating category order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update category order",
+        variant: "destructive"
+      });
+    }
+  };
   
   const handleAddCategory = async () => {
     if (!name.trim()) {
@@ -107,7 +170,8 @@ export function CategoryManager() {
       const newCategory = await addCategory({
         name: name.trim(),
         icon,
-        color
+        color,
+        displayOrder: categories.length
       });
       
       setCategories(prev => [...prev, newCategory]);
@@ -144,7 +208,8 @@ export function CategoryManager() {
       const updatedCategory = await updateCategory(currentCategory.id, {
         name: name.trim(),
         icon,
-        color
+        color,
+        displayOrder: currentCategory.displayOrder
       });
       
       setCategories(prev => 
@@ -174,9 +239,13 @@ export function CategoryManager() {
     try {
       await deleteCategory(currentCategory.id);
       
-      setCategories(prev => 
-        prev.filter(cat => cat.id !== currentCategory.id)
-      );
+      const remainingCategories = categories.filter(cat => cat.id !== currentCategory.id);
+      
+      for (let i = 0; i < remainingCategories.length; i++) {
+        await updateCategory(remainingCategories[i].id, { displayOrder: i });
+      }
+      
+      setCategories(remainingCategories);
       
       toast({
         title: "Success",
@@ -209,7 +278,6 @@ export function CategoryManager() {
   };
   
   const renderIconPreview = (iconName: string) => {
-    // Get the icon component by name using dynamic lookup
     const IconComponent = LucideIcons[iconName as keyof typeof LucideIcons] as React.ElementType;
     return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
   };
@@ -238,6 +306,7 @@ export function CategoryManager() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">Order</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Icon</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -246,13 +315,38 @@ export function CategoryManager() {
             <TableBody>
               {categories.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
                     No categories found. Add your first category.
                   </TableCell>
                 </TableRow>
               ) : (
-                categories.map(category => (
+                categories.map((category, index) => (
                   <TableRow key={category.id}>
+                    <TableCell>
+                      <div className="flex items-center space-x-1">
+                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex flex-col">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5"
+                            disabled={index === 0}
+                            onClick={() => moveCategoryUp(index)}
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5"
+                            disabled={index === categories.length - 1}
+                            onClick={() => moveCategoryDown(index)}
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <CategoryBadge category={category} />
                     </TableCell>
@@ -283,7 +377,6 @@ export function CategoryManager() {
         </div>
       )}
       
-      {/* Add Category Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -364,7 +457,6 @@ export function CategoryManager() {
         </DialogContent>
       </Dialog>
       
-      {/* Edit Category Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -444,7 +536,6 @@ export function CategoryManager() {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Category Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>

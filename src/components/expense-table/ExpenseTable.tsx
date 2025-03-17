@@ -94,22 +94,33 @@ export function ExpenseTable({
       totalByCategory.set(id, total);
     });
     
-    // Create sorted legend data (by total amount, highest first)
-    return Array.from(totalByCategory.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([categoryId, amount]) => {
+    // Sort categories by display order, then by total amount
+    return Array.from(allCategoryIds)
+      .map(categoryId => {
         const category = categoryMap.get(categoryId);
-        let color = getCategoryColor(categoryId);
-        if (category?.color) {
-          color = extractColorFromClass(category.color);
-        }
+        const total = totalByCategory.get(categoryId) || 0;
         
         return {
           categoryId,
           categoryName: category?.name || categoryId,
-          color
+          color: category?.color ? extractColorFromClass(category.color) : getCategoryColor(categoryId),
+          total,
+          displayOrder: category?.displayOrder ?? 999
         };
-      });
+      })
+      .sort((a, b) => {
+        // First sort by display order
+        if (a.displayOrder !== b.displayOrder) {
+          return a.displayOrder - b.displayOrder;
+        }
+        // If display order is the same or undefined, sort by total amount
+        return b.total - a.total;
+      })
+      .map(({ categoryId, categoryName, color }) => ({
+        categoryId,
+        categoryName,
+        color
+      }));
   }, [monthGroups, categoryMap]);
   
   // Toggle projections visibility

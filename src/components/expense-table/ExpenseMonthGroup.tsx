@@ -74,6 +74,7 @@ export function ExpenseMonthGroup({
               getCategoryColor={getCategoryColor}
               showAgainstIncome={showAgainstIncome}
               monthlyIncome={monthlyIncome}
+              categoryLegendData={categoryLegendData}
             />
           }
         </div>

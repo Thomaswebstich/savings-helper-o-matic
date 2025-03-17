@@ -17,8 +17,30 @@ export function useCategoryTotals(
       }
       
       try {
+        // Get category totals from the utility
         const data = await calculateCategoryTotals(expenses, categories, budgets);
-        setCategoryData(data);
+        
+        // Create a map for easy lookup of display order
+        const categoryOrderMap = new Map<string, number>();
+        categories.forEach(cat => {
+          categoryOrderMap.set(cat.id, cat.displayOrder ?? 999);
+        });
+        
+        // Add displayOrder to each category in the data
+        const enhancedData = data.map(cat => ({
+          ...cat,
+          displayOrder: categoryOrderMap.get(cat.categoryId) ?? 999
+        }));
+        
+        // Sort by display order first, then by amount
+        enhancedData.sort((a, b) => {
+          if (a.displayOrder !== b.displayOrder) {
+            return a.displayOrder - b.displayOrder;
+          }
+          return b.amount - a.amount;
+        });
+        
+        setCategoryData(enhancedData);
       } catch (error) {
         console.error('Error calculating category totals:', error);
         setCategoryData([]);
