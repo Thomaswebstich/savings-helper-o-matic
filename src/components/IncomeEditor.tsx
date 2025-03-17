@@ -2,30 +2,58 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { formatCurrency, Currency } from '@/lib/data';
+import { formatCurrency, Currency, updateIncomeSource } from '@/lib/data';
 import { 
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Edit2, Check } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface IncomeEditorProps {
+  incomeId: string; // Added incomeId for update operation
   income: number;
   currency: Currency;
   onIncomeChange: (newIncome: number) => void;
 }
 
-export function IncomeEditor({ income, currency, onIncomeChange }: IncomeEditorProps) {
+export function IncomeEditor({ incomeId, income, currency, onIncomeChange }: IncomeEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState(income.toString());
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const numValue = parseFloat(inputValue);
+    
     if (!isNaN(numValue) && numValue > 0) {
-      onIncomeChange(numValue);
-      setIsEditing(false);
+      try {
+        // Update the income source in the database
+        await updateIncomeSource(incomeId, { amount: numValue });
+        
+        // Update local state
+        onIncomeChange(numValue);
+        
+        toast({
+          title: "Success",
+          description: "Income updated successfully",
+        });
+        
+        setIsEditing(false);
+      } catch (error) {
+        console.error("Error updating income:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update income",
+          variant: "destructive"
+        });
+      }
+    } else {
+      toast({
+        title: "Error",
+        description: "Please enter a valid amount",
+        variant: "destructive"
+      });
     }
   };
 

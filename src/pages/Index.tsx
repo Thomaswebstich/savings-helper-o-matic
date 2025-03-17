@@ -252,19 +252,25 @@ export default function Index() {
   };
   
   const handleEditExpense = (expense: Expense) => {
+    console.log("Editing expense:", expense);
     setCurrentExpense(expense);
     setIsFormOpen(true);
   };
   
   const handleFormSubmit = async (data: ExpenseFormValues) => {
+    console.log("Form submitted with data:", data);
     if (currentExpense) {
-      let categoryId = '';
-      if (data.category) {
+      let categoryId = data.category; // Use data.category directly as it should already be the categoryId
+      
+      // If it's not a valid ID (e.g., it's a name), try to find the ID
+      if (categoryId && !categories.some(c => c.id === categoryId)) {
         const foundCategory = categories.find(c => c.name === data.category);
         if (foundCategory) {
           categoryId = foundCategory.id;
         }
       }
+      
+      console.log("Updating expense with categoryId:", categoryId);
       
       const updatedExpense = { 
         ...currentExpense, 
@@ -287,7 +293,7 @@ export default function Index() {
             description: data.description,
             amount: data.amount,
             date: data.date.toISOString().split('T')[0],
-            category: data.category,
+            category: data.category, // Keep for backward compatibility
             category_id: categoryId,
             is_recurring: data.isRecurring,
             recurrence_interval: data.recurrenceInterval,

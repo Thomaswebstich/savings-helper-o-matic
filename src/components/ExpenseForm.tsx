@@ -53,9 +53,10 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
     }
   });
   
-  // Reset form when initial values change
+  // Reset form when initial values change or when modal opens/closes
   useEffect(() => {
     if (initialValues) {
+      console.log("Setting form values with:", initialValues);
       // If we have initial values, set them in the form
       form.reset({
         description: initialValues.description,
@@ -63,7 +64,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
         date: initialValues.date instanceof Date 
           ? initialValues.date 
           : new Date(initialValues.date),
-        category: initialValues.category || initialValues.categoryId || '',
+        category: initialValues.categoryId || '', // Use categoryId primarily
         isRecurring: initialValues.isRecurring,
         recurrenceInterval: initialValues.recurrenceInterval,
         stopDate: initialValues.stopDate,
@@ -84,6 +85,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
   
   // Handle form submission
   const handleSubmit = (values: ExpenseFormValues) => {
+    console.log("Submitting form with values:", values);
     onSubmit(values);
     onClose();
   };

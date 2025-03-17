@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Dialog,
@@ -47,6 +46,7 @@ import {
   calculateTotalMonthlyIncome
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
+import { IncomeEditor } from './IncomeEditor';
 
 export function IncomeManager() {
   const [incomeSources, setIncomeSources] = useState<IncomeSource[]>([]);
@@ -55,7 +55,6 @@ export function IncomeManager() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentIncome, setCurrentIncome] = useState<IncomeSource | null>(null);
   
-  // Form state
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState<number>(0);
   const [currency, setCurrency] = useState<Currency>('THB');
@@ -243,6 +242,28 @@ export function IncomeManager() {
     setIsDeleteDialogOpen(true);
   };
   
+  const handleIncomeChange = async (incomeId: string, newAmount: number) => {
+    try {
+      const updatedIncome = await updateIncomeSource(incomeId, { amount: newAmount });
+      
+      setIncomeSources(prev => 
+        prev.map(inc => inc.id === incomeId ? updatedIncome : inc)
+      );
+      
+      toast({
+        title: "Success",
+        description: "Income amount updated successfully"
+      });
+    } catch (error) {
+      console.error('Error updating income amount:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update income amount",
+        variant: "destructive"
+      });
+    }
+  };
+  
   const totalMonthlyIncome = calculateTotalMonthlyIncome(incomeSources);
   
   return (
@@ -292,7 +313,14 @@ export function IncomeManager() {
                 incomeSources.map(income => (
                   <TableRow key={income.id}>
                     <TableCell>{income.description}</TableCell>
-                    <TableCell>{formatCurrency(income.amount, income.currency)}</TableCell>
+                    <TableCell>
+                      <IncomeEditor 
+                        incomeId={income.id}
+                        income={income.amount} 
+                        currency={income.currency}
+                        onIncomeChange={(newAmount) => handleIncomeChange(income.id, newAmount)}
+                      />
+                    </TableCell>
                     <TableCell>
                       {income.isRecurring ? (
                         <span className="inline-flex items-center">
@@ -331,7 +359,6 @@ export function IncomeManager() {
         </div>
       )}
       
-      {/* Add/Edit Income Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -495,7 +522,6 @@ export function IncomeManager() {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Income Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
