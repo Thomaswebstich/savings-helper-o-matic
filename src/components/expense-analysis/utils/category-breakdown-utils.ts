@@ -43,16 +43,16 @@ export function calculateCategoryBreakdown(
     let color: string | undefined;
     
     // Extract information from category object if available
-    if (expense.category && typeof expense.category === 'object' && expense.category !== null) {
+    if (expense.category && typeof expense.category === 'object') {
+      // Now we know it's an object and not null
       const categoryObj = expense.category;
       
-      // Safely access name property with type guard
-      if ('name' in categoryObj && typeof categoryObj.name === 'string') {
+      // We need to check if the properties exist on the object
+      if (categoryObj && 'name' in categoryObj && typeof categoryObj.name === 'string') {
         categoryName = categoryObj.name;
       }
       
-      // Explicitly check for color property in the category object
-      if ('color' in categoryObj && typeof categoryObj.color === 'string') {
+      if (categoryObj && 'color' in categoryObj && typeof categoryObj.color === 'string') {
         color = categoryObj.color;
       }
     } else if (typeof expense.category === 'string') {
