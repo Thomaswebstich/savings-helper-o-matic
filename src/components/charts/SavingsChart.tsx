@@ -6,7 +6,6 @@ import {
   BarChart, 
   CartesianGrid, 
   Cell, 
-  Tooltip, 
   XAxis, 
   YAxis
 } from 'recharts';
@@ -45,7 +44,8 @@ export function SavingsChart({
               tick={{ fontSize: 10 }}
             />
             <ChartTooltip 
-              content={({ active, payload }) => {
+              content={(props) => {
+                const { active, payload } = props;
                 if (active && payload && payload.length) {
                   const value = Number(payload[0].value);
                   return (

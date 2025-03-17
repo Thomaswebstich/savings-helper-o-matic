@@ -5,10 +5,10 @@ import {
   Pie, 
   PieChart, 
   ResponsiveContainer, 
-  Cell, 
-  Tooltip 
+  Cell
 } from 'recharts';
 import { CategoryBadge } from '@/components/CategoryBadge';
+import { ChartTooltip } from '@/components/ui/chart';
 
 interface CategoriesChartProps {
   pieData: CategoryTotal[];
@@ -55,8 +55,9 @@ export function CategoriesChart({
               );
             })}
           </Pie>
-          <Tooltip 
-            content={({ active, payload }) => {
+          <ChartTooltip 
+            content={(props) => {
+              const { active, payload } = props;
               if (active && payload && payload.length) {
                 return (
                   <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">

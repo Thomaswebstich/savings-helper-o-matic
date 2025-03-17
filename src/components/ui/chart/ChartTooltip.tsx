@@ -69,7 +69,7 @@ export const ChartTooltipContent = React.forwardRef<
         <div className="grid gap-1.5">
           {payload.map((item, index) => (
             <TooltipItem
-              key={item.dataKey}
+              key={item.dataKey || `item-${index}`}
               item={item}
               config={config}
               nameKey={nameKey}

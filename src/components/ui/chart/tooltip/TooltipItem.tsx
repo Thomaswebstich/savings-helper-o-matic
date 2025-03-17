@@ -26,6 +26,8 @@ export function TooltipItem({
   formatter,
   index,
 }: TooltipItemProps) {
+  if (!item) return null;
+  
   const key = `${nameKey || item.name || item.dataKey || "value"}`
   const itemConfig = getPayloadConfigFromPayload(config, item, key)
   const indicatorColor = item.payload?.fill || item.color

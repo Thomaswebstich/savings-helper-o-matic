@@ -5,11 +5,10 @@ import {
   Area, 
   AreaChart, 
   CartesianGrid, 
-  Tooltip, 
   XAxis, 
   YAxis
 } from 'recharts';
-import { ChartContainer } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { formatTooltipValue, chartConfig } from './financialChartUtils';
 
 interface IncomeExpensesChartProps {
@@ -51,8 +50,9 @@ export function IncomeExpensesChart({
               tick={{ fontSize: 10 }}
             />
             <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
-            <Tooltip 
-              content={({ active, payload }) => {
+            <ChartTooltip 
+              content={(props) => {
+                const { active, payload } = props;
                 if (active && payload && payload.length) {
                   return (
                     <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">

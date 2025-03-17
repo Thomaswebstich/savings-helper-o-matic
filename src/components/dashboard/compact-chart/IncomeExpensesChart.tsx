@@ -1,6 +1,7 @@
 
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ComposedChart, Bar } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Legend, CartesianGrid, ComposedChart, Bar } from 'recharts';
 import { CURRENCY_SYMBOLS, Currency } from '@/lib/data';
+import { ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 interface DataPoint {
   date: string;
@@ -56,19 +57,28 @@ export function IncomeExpensesChart({
             axisLine={false}
             tickLine={false}
           />
-          <Tooltip 
-            formatter={(value, name) => [
-              `${CURRENCY_SYMBOLS[displayCurrency]}${Number(value).toLocaleString()}`, 
-              name === 'income' ? 'Income' : name === 'expenses' ? 'Expenses' : 'Savings'
-            ]}
-            contentStyle={{ 
-              fontSize: '10px', 
-              padding: '4px 8px',
-              border: '1px solid rgba(0,0,0,0.1)'
-            }}
-            labelFormatter={(label, items) => {
-              const item = items[0]?.payload;
-              return `${label}${item?.isProjection ? ' (Projected)' : ''}`;
+          <ChartTooltip 
+            content={(props) => {
+              const { active, payload, label } = props;
+              if (active && payload && payload.length) {
+                const item = payload[0]?.payload;
+                return (
+                  <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
+                    <p className="font-medium mb-1">{label}{item?.isProjection ? ' (Projected)' : ''}</p>
+                    {payload.map((entry, index) => (
+                      <div key={`tooltip-${index}`} className="flex justify-between gap-4">
+                        <span style={{ color: entry.color }}>
+                          {entry.name === 'income' ? 'Income' : entry.name === 'expenses' ? 'Expenses' : 'Savings'}:
+                        </span>
+                        <span className="font-medium">
+                          {`${CURRENCY_SYMBOLS[displayCurrency]}${Number(entry.value).toLocaleString()}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              return null;
             }}
           />
           <Legend wrapperStyle={{ fontSize: '10px' }} />
@@ -124,19 +134,28 @@ export function IncomeExpensesChart({
             axisLine={false}
             tickLine={false}
           />
-          <Tooltip 
-            formatter={(value, name) => [
-              `${CURRENCY_SYMBOLS[displayCurrency]}${Number(value).toLocaleString()}`, 
-              name === 'income' ? 'Income' : 'Expenses'
-            ]}
-            contentStyle={{ 
-              fontSize: '10px', 
-              padding: '4px 8px',
-              border: '1px solid rgba(0,0,0,0.1)'
-            }}
-            labelFormatter={(label, items) => {
-              const item = items[0]?.payload;
-              return `${label}${item?.isProjection ? ' (Projected)' : ''}`;
+          <ChartTooltip 
+            content={(props) => {
+              const { active, payload, label } = props;
+              if (active && payload && payload.length) {
+                const item = payload[0]?.payload;
+                return (
+                  <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
+                    <p className="font-medium mb-1">{label}{item?.isProjection ? ' (Projected)' : ''}</p>
+                    {payload.map((entry, index) => (
+                      <div key={`tooltip-${index}`} className="flex justify-between gap-4">
+                        <span style={{ color: entry.color }}>
+                          {entry.name === 'income' ? 'Income' : 'Expenses'}:
+                        </span>
+                        <span className="font-medium">
+                          {`${CURRENCY_SYMBOLS[displayCurrency]}${Number(entry.value).toLocaleString()}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              return null;
             }}
           />
           <Legend wrapperStyle={{ fontSize: '10px' }} />
