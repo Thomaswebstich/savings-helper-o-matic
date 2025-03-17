@@ -31,34 +31,12 @@ export function OverviewCards({
 }: OverviewCardsProps) {
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
-        {/* Income & Expenses Chart */}
-        <div>
-          <IncomeExpensesCompactChart 
-            monthlyData={monthlyData}
-            displayCurrency={displayCurrency}
-          />
-        </div>
-        
-        {/* Exchange Rate Chart - only show when not THB */}
-        <div>
-          {displayCurrency !== 'THB' ? (
-            <ExchangeRateChart displayCurrency={displayCurrency} />
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <DataCard
-                title="Monthly Income"
-                value={formatCurrency(monthlyIncome, displayCurrency)}
-                icon={<Banknote className="h-4 w-4" />}
-              />
-              <DataCard
-                title="Monthly Expenses"
-                value={currentMonthData ? formatCurrency(currentMonthData.expenses, displayCurrency) : "0"}
-                icon={<CreditCard className="h-4 w-4" />}
-              />
-            </div>
-          )}
-        </div>
+      {/* Income & Expenses Chart - Full width */}
+      <div className="mb-5">
+        <IncomeExpensesCompactChart 
+          monthlyData={monthlyData}
+          displayCurrency={displayCurrency}
+        />
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -86,6 +64,13 @@ export function OverviewCards({
           trend={savingsChange.value !== 0 ? savingsChange : undefined}
         />
       </div>
+      
+      {/* Exchange Rate Chart - only show when not THB */}
+      {displayCurrency !== 'THB' && (
+        <div className="mb-5">
+          <ExchangeRateChart displayCurrency={displayCurrency} />
+        </div>
+      )}
     </>
   );
 }
