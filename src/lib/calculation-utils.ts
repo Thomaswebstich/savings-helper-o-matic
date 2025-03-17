@@ -1,3 +1,4 @@
+
 import { Expense, IncomeSource, Currency } from './types';
 import { format, getMonth, getYear } from 'date-fns';
 
@@ -94,9 +95,7 @@ export function convertCurrency(amount: number, fromCurrency: Currency, toCurren
   const conversionRates: { [key in Currency]: number } = {
     THB: 1,
     USD: 0.029,
-    EUR: 0.026,
-    GBP: 0.023,
-    JPY: 4.2
+    EUR: 0.026
   };
 
   const thbAmount = amount / conversionRates[fromCurrency];
