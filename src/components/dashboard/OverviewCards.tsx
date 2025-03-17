@@ -64,13 +64,6 @@ export function OverviewCards({
           displayCurrency={displayCurrency}
         />
       </div>
-      
-      {/* Exchange Rate Chart - only show when not THB */}
-      {displayCurrency !== 'THB' && (
-        <div className="mb-5">
-          <ExchangeRateChart displayCurrency={displayCurrency} />
-        </div>
-      )}
     </>
   );
 }
