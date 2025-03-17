@@ -28,6 +28,11 @@ interface ExpenseMonthGroupProps {
   getCategoryColor: (categoryId: string) => string;
   showAgainstIncome?: boolean;
   monthlyIncome?: number;
+  categoryLegendData?: Array<{
+    categoryId: string;
+    categoryName: string;
+    color: string;
+  }>;
 }
 
 export function ExpenseMonthGroup({
@@ -41,7 +46,8 @@ export function ExpenseMonthGroup({
   onDeleteExpense,
   getCategoryColor,
   showAgainstIncome = false,
-  monthlyIncome = 0
+  monthlyIncome = 0,
+  categoryLegendData = []
 }: ExpenseMonthGroupProps) {
   
   return (
@@ -60,7 +66,7 @@ export function ExpenseMonthGroup({
           />
           
           {/* Category stacked bar - only show when not expanded */}
-          {!isExpanded && group.categoryTotals.size > 0 && (
+          {!isExpanded && group.categoryTotals.size > 0 &&
             <ExpenseMonthStackedBar
               categoryTotals={group.categoryTotals}
               total={group.total}
@@ -69,7 +75,7 @@ export function ExpenseMonthGroup({
               showAgainstIncome={showAgainstIncome}
               monthlyIncome={monthlyIncome}
             />
-          )}
+          }
         </div>
       </CollapsibleTrigger>
       

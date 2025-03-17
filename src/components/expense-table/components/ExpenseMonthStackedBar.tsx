@@ -1,6 +1,7 @@
 
 import { StackedBar } from '@/components/ui/stacked-bar';
 import { extractColorFromClass } from '@/components/expense-analysis/utils/category-breakdown-utils';
+import { Category } from '@/lib/data';
 
 interface ExpenseMonthStackedBarProps {
   categoryTotals: Map<string, number>;
@@ -58,34 +59,6 @@ export function ExpenseMonthStackedBar({
         height={4}
         className="mb-1.5"
       />
-      <div className="flex flex-wrap gap-2 text-xs">
-        {stackedBarData
-          .slice(0, 3) // Only show top 3 categories in the legend
-          .map(segment => {
-            const category = categoryMap.get(segment.id);
-            return (
-              <span 
-                key={segment.id} 
-                className="inline-flex items-center gap-1"
-              >
-                <span 
-                  className="inline-block h-2 w-2 rounded-sm" 
-                  style={{ backgroundColor: segment.color }}
-                />
-                <span className="text-muted-foreground">
-                  {category?.name || segment.id}
-                </span>
-              </span>
-            );
-          })
-        }
-        
-        {showAgainstIncome && monthlyIncome > 0 && (
-          <span className="ml-auto text-muted-foreground">
-            % of monthly income
-          </span>
-        )}
-      </div>
     </div>
   );
 }

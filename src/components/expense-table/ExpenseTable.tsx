@@ -7,13 +7,14 @@ import { ExpenseProjectionToggle } from './ExpenseProjectionToggle';
 import { generateProjectedExpenses } from './expense-utils';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Plus, BarChart4, PieChart } from 'lucide-react';
+import { Plus, BarChart4 } from 'lucide-react';
 import { useSortExpenses } from './hooks/useSortExpenses';
 import { useExpandedMonths } from './hooks/useExpandedMonths';
 import { useExpenseFilters } from './hooks/useExpenseFilters';
 import { filterExpense, groupExpensesByMonth, getCategoryColor } from './utils/expense-filter-utils';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { extractColorFromClass } from '@/components/expense-analysis/utils/category-breakdown-utils';
 
 interface ExpenseTableProps {
   expenses: Expense[];
@@ -73,6 +74,44 @@ export function ExpenseTable({
     return groupExpensesByMonth(filteredExpenses, sortConfig, categoryMap);
   }, [filteredExpenses, sortConfig, categoryMap]);
   
+  // Generate consistent category legend data across all months
+  const categoryLegendData = useMemo(() => {
+    // Get all categories that appear in any month group
+    const allCategoryIds = new Set<string>();
+    monthGroups.forEach(group => {
+      Array.from(group.categoryTotals.keys()).forEach(id => {
+        allCategoryIds.add(id);
+      });
+    });
+    
+    // Calculate total amount per category across all months
+    const totalByCategory = new Map<string, number>();
+    allCategoryIds.forEach(id => {
+      let total = 0;
+      monthGroups.forEach(group => {
+        total += group.categoryTotals.get(id) || 0;
+      });
+      totalByCategory.set(id, total);
+    });
+    
+    // Create sorted legend data (by total amount, highest first)
+    return Array.from(totalByCategory.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([categoryId, amount]) => {
+        const category = categoryMap.get(categoryId);
+        let color = getCategoryColor(categoryId);
+        if (category?.color) {
+          color = extractColorFromClass(category.color);
+        }
+        
+        return {
+          categoryId,
+          categoryName: category?.name || categoryId,
+          color
+        };
+      });
+  }, [monthGroups, categoryMap]);
+  
   // Toggle projections visibility
   const toggleProjections = () => {
     setShowProjections(prev => !prev);
@@ -125,6 +164,34 @@ export function ExpenseTable({
         </div>
       </div>
       
+      {/* Global category legend - only show if we have data */}
+      {monthGroups.length > 0 && categoryLegendData.length > 0 && (
+        <div className="px-4 py-2 bg-background border-b border-border">
+          <div className="flex flex-wrap gap-3 text-xs">
+            {categoryLegendData.slice(0, 6).map(item => (
+              <span 
+                key={item.categoryId} 
+                className="inline-flex items-center gap-1"
+              >
+                <span 
+                  className="inline-block h-2.5 w-2.5 rounded-sm" 
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className="text-muted-foreground">
+                  {item.categoryName}
+                </span>
+              </span>
+            ))}
+            
+            {showAgainstIncome && monthlyIncome > 0 && (
+              <span className="ml-auto text-muted-foreground">
+                % of monthly income
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      
       <div className="overflow-x-auto">
         {monthGroups.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
@@ -148,6 +215,7 @@ export function ExpenseTable({
                 getCategoryColor={getCategoryColor}
                 showAgainstIncome={showAgainstIncome}
                 monthlyIncome={monthlyIncome}
+                categoryLegendData={categoryLegendData}
               />
             ))}
           </div>
