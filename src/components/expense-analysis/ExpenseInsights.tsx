@@ -29,7 +29,7 @@ export function ExpenseInsights({
   
   // Find most expensive day
   const mostExpensiveDay = useMemo(() => {
-    if (filteredExpenses.length === 0) return { date: null, amount: 0 };
+    if (filteredExpenses.length === 0) return { date: null, total: 0 };
     
     const dailyTotals = filteredExpenses.reduce((map, expense) => {
       const dateKey = format(expense.date instanceof Date ? expense.date : new Date(expense.date), 'yyyy-MM-dd');
