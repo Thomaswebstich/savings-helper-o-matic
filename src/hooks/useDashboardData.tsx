@@ -14,7 +14,7 @@ export function useDashboardData() {
   // Use our specialized hooks
   const { expenses, setExpenses, isLoading: expensesLoading } = useExpenseData();
   const { categories, budgets, refreshCategoryData } = useCategoriesData();
-  const { incomeSources, monthlyIncome, refreshIncomeData } = useIncomeData(displayCurrency);
+  const { incomeSources, monthlyIncome, refreshIncomeData, isLoading: incomeLoading } = useIncomeData(displayCurrency);
   
   // Get category totals
   const categoryData = useCategoryTotals(expenses, categories, budgets);
@@ -34,7 +34,7 @@ export function useDashboardData() {
   });
   
   // Combine loading states
-  const isLoading = expensesLoading;
+  const isLoading = expensesLoading || incomeLoading;
 
   // Combined refresh function
   const refreshData = async () => {

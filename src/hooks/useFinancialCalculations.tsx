@@ -24,7 +24,7 @@ export function useFinancialCalculations({
 }: FinancialCalculationsProps) {
   
   const monthlyData = useMemo(() => {
-    if (expenses.length === 0) return [];
+    if (expenses.length === 0 && incomeSources.length === 0) return [];
     return calculateMonthlyTotals(expenses, incomeSources, timeRange.monthsBack, timeRange.monthsForward);
   }, [expenses, incomeSources, timeRange]);
   
@@ -32,13 +32,11 @@ export function useFinancialCalculations({
     if (monthlyData.length === 0) return null;
     
     // Find the index of the current month (the one right before projections start)
-    const currentMonthIndex = monthlyData.findIndex((month, index, array) => {
-      if (index < array.length - 1) {
-        const currentDate = new Date(month.month);
-        const nextDate = new Date(array[index + 1].month);
-        return nextDate > currentDate && nextDate > new Date();
-      }
-      return false;
+    const currentDate = new Date();
+    const currentMonthIndex = monthlyData.findIndex(month => {
+      const monthDate = new Date(month.month);
+      return monthDate.getMonth() === currentDate.getMonth() && 
+             monthDate.getFullYear() === currentDate.getFullYear();
     });
     
     const data = currentMonthIndex >= 0 
@@ -58,32 +56,52 @@ export function useFinancialCalculations({
   const expenseChange = useMemo(() => {
     if (monthlyData.length < 2) return { value: 0, isPositive: false };
     
-    const currentMonth = monthlyData[monthlyData.length - timeRange.monthsForward - 1];
-    const previousMonth = monthlyData[monthlyData.length - timeRange.monthsForward - 2];
+    // Get current month data
+    const currentDate = new Date();
+    const currentMonthIndex = monthlyData.findIndex(month => {
+      const monthDate = new Date(month.month);
+      return monthDate.getMonth() === currentDate.getMonth() && 
+             monthDate.getFullYear() === currentDate.getFullYear();
+    });
     
-    if (!currentMonth || !previousMonth) return { value: 0, isPositive: false };
+    if (currentMonthIndex <= 0) return { value: 0, isPositive: false };
+    
+    const currentMonth = monthlyData[currentMonthIndex];
+    const previousMonth = monthlyData[currentMonthIndex - 1];
+    
+    if (!previousMonth.expenses) return { value: 0, isPositive: false };
     
     const change = ((currentMonth.expenses - previousMonth.expenses) / previousMonth.expenses) * 100;
     return {
       value: Math.abs(change),
       isPositive: change < 0
     };
-  }, [monthlyData, timeRange.monthsForward]);
+  }, [monthlyData]);
   
   const savingsChange = useMemo(() => {
     if (monthlyData.length < 2) return { value: 0, isPositive: false };
     
-    const currentMonth = monthlyData[monthlyData.length - timeRange.monthsForward - 1];
-    const previousMonth = monthlyData[monthlyData.length - timeRange.monthsForward - 2];
+    // Get current month data
+    const currentDate = new Date();
+    const currentMonthIndex = monthlyData.findIndex(month => {
+      const monthDate = new Date(month.month);
+      return monthDate.getMonth() === currentDate.getMonth() && 
+             monthDate.getFullYear() === currentDate.getFullYear();
+    });
     
-    if (!currentMonth || !previousMonth) return { value: 0, isPositive: false };
+    if (currentMonthIndex <= 0) return { value: 0, isPositive: false };
+    
+    const currentMonth = monthlyData[currentMonthIndex];
+    const previousMonth = monthlyData[currentMonthIndex - 1];
+    
+    if (!previousMonth.savings) return { value: 0, isPositive: false };
     
     const change = ((currentMonth.savings - previousMonth.savings) / previousMonth.savings) * 100;
     return {
       value: Math.abs(change),
       isPositive: change > 0
     };
-  }, [monthlyData, timeRange.monthsForward]);
+  }, [monthlyData]);
   
   const totalExpenses = useMemo(() => {
     const totalInTHB = expenses.reduce((total, expense) => {
