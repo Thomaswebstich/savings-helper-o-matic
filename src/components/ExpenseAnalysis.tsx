@@ -1,6 +1,6 @@
 
 import { useState, useMemo } from 'react';
-import { Expense, CategoryTotal, formatCurrency, CATEGORIES, CATEGORY_COLORS, Currency } from '@/lib/data';
+import { Expense, CategoryTotal, formatCurrency, Currency } from '@/lib/data';
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie } from 'recharts';
 import { CategoryBadge } from './CategoryBadge';
 import { ChartLegendContent } from '@/components/ui/chart';
@@ -58,30 +58,31 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
     const categoryMap = new Map<string, number>();
     
     filteredExpenses.forEach(expense => {
-      const current = categoryMap.get(expense.category) || 0;
-      categoryMap.set(expense.category, current + expense.amount);
+      const current = categoryMap.get(expense.category || expense.categoryId) || 0;
+      categoryMap.set(expense.category || expense.categoryId, current + expense.amount);
     });
     
     // Calculate total
     const total = Array.from(categoryMap.values()).reduce((sum, amount) => sum + amount, 0);
     
     // Create category data array
-    const catData = CATEGORIES.map(category => {
-      const amount = categoryMap.get(category) || 0;
+    const catData = Array.from(categoryMap.entries()).map(([categoryKey, amount]) => {
       const percentage = total > 0 ? (amount / total) * 100 : 0;
       
       return {
-        category,
+        categoryId: categoryKey,
+        categoryName: categoryKey, // We'll use the category ID/name as the display name
         amount,
-        percentage
+        percentage,
+        color: '' // This will be filled in by CategoryBadge
       };
-    }).filter(cat => cat.amount > 0);
+    });
     
     // Sort based on selected sort method
     if (sortBy === "amount") {
       return catData.sort((a, b) => b.amount - a.amount);
     } else {
-      return catData.sort((a, b) => a.category.localeCompare(b.category));
+      return catData.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
     }
   }, [filteredExpenses, sortBy]);
   

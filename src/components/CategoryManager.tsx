@@ -38,7 +38,7 @@ import {
   deleteCategory
 } from '@/lib/data';
 import { CategoryBadge } from './CategoryBadge';
-import * as Icons from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 
 export function CategoryManager() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -209,7 +209,8 @@ export function CategoryManager() {
   };
   
   const renderIconPreview = (iconName: string) => {
-    const IconComponent = Icons[iconName as keyof typeof Icons];
+    // Get the icon component by name using dynamic lookup
+    const IconComponent = LucideIcons[iconName as keyof typeof LucideIcons] as React.ElementType;
     return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
   };
   

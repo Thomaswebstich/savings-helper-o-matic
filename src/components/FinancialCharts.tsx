@@ -65,11 +65,13 @@ export function FinancialCharts({
   // If there are more than 5 categories with amounts, add "Other"
   if (otherAmount > 0) {
     pieData.push({
-      category: "Other" as any,
+      categoryId: "Other",
+      categoryName: "Other",
       amount: otherAmount,
       percentage: categoryData
         .slice(5)
-        .reduce((sum, category) => sum + category.percentage, 0)
+        .reduce((sum, category) => sum + category.percentage, 0),
+      color: '#94a3b8' // Gray color for "Other"
     });
   }
   
@@ -341,7 +343,7 @@ export function FinancialCharts({
                   outerRadius={90}
                   paddingAngle={2}
                   dataKey="amount"
-                  nameKey="category"
+                  nameKey="categoryName"
                   label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                   labelLine={false}
                 >
@@ -380,9 +382,9 @@ export function FinancialCharts({
               <h3 className="text-sm font-medium mb-3">Top Categories</h3>
               <div className="space-y-3">
                 {categoryData.slice(0, 5).map(category => (
-                  <div key={category.category} className="flex items-center justify-between">
+                  <div key={category.categoryId} className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <CategoryBadge category={category.category} className="mr-2" />
+                      <CategoryBadge category={category.categoryName} className="mr-2" />
                       <span>{formatCurrency(category.amount)}</span>
                     </div>
                     <div className="text-sm text-muted-foreground">
