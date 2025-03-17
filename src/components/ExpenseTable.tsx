@@ -4,8 +4,8 @@ import { Expense, Category, CATEGORIES, formatCurrency } from '@/lib/data';
 import { CategoryBadge } from './CategoryBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { format } from 'date-fns';
-import { Calendar, Filter, SortDesc, SortAsc, Plus, CheckSquare, X, Search, Trash2, Pencil } from 'lucide-react';
+import { format, isAfter, isBefore, isSameMonth, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { Calendar, Filter, SortDesc, SortAsc, Plus, CheckSquare, X, Search, Trash2, Pencil, ChevronRight, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +19,11 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface ExpenseTableProps {
   expenses: Expense[];
@@ -27,12 +32,21 @@ interface ExpenseTableProps {
   onDeleteExpense?: (id: string) => void;
 }
 
+// Group expenses by month
+interface MonthGroup {
+  month: Date;
+  label: string;
+  expenses: Expense[];
+  total: number;
+}
+
 export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteExpense }: ExpenseTableProps) {
   const [search, setSearch] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Expense; direction: 'asc' | 'desc' }>({ 
     key: 'date', direction: 'desc' 
   });
+  const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
   
   // Filter expenses based on search and category filters
   const filteredExpenses = useMemo(() => {
@@ -50,37 +64,79 @@ export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteEx
     });
   }, [expenses, search, selectedCategories]);
   
-  // Sort expenses
-  const sortedExpenses = useMemo(() => {
-    const sorted = [...filteredExpenses];
+  // Group expenses by month
+  const monthGroups = useMemo(() => {
+    const groups: MonthGroup[] = [];
+    const monthMap = new Map<string, MonthGroup>();
     
-    return sorted.sort((a, b) => {
-      if (sortConfig.key === 'date') {
-        return sortConfig.direction === 'asc' 
-          ? a.date.getTime() - b.date.getTime()
-          : b.date.getTime() - a.date.getTime();
-      }
-      
-      if (sortConfig.key === 'amount') {
-        return sortConfig.direction === 'asc' 
-          ? a.amount - b.amount
-          : b.amount - a.amount;
-      }
-      
-      if (sortConfig.key === 'description') {
-        return sortConfig.direction === 'asc'
-          ? a.description.localeCompare(b.description)
-          : b.description.localeCompare(a.description);
-      }
-      
-      if (sortConfig.key === 'category') {
-        return sortConfig.direction === 'asc'
-          ? a.category.localeCompare(b.category)
-          : b.category.localeCompare(a.category);
-      }
-      
-      return 0;
+    // Sort expenses by date first
+    const sortedExpenses = [...filteredExpenses].sort((a, b) => {
+      const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+      const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+      return sortConfig.key === 'date' && sortConfig.direction === 'asc' 
+        ? dateA.getTime() - dateB.getTime()
+        : dateB.getTime() - dateA.getTime();
     });
+    
+    // Group expenses by month
+    sortedExpenses.forEach(expense => {
+      const expenseDate = expense.date instanceof Date ? expense.date : new Date(expense.date);
+      const monthStart = startOfMonth(expenseDate);
+      const monthKey = format(monthStart, 'yyyy-MM');
+      const monthLabel = format(monthStart, 'MMMM yyyy');
+      
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, {
+          month: monthStart,
+          label: monthLabel,
+          expenses: [],
+          total: 0
+        });
+      }
+      
+      const group = monthMap.get(monthKey)!;
+      group.expenses.push(expense);
+      group.total += expense.amount;
+    });
+    
+    // Convert map to array and sort by month (most recent first)
+    Array.from(monthMap.values()).forEach(group => {
+      // Sort expenses within the month group based on sortConfig
+      group.expenses.sort((a, b) => {
+        if (sortConfig.key === 'date') {
+          const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+          const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+          return sortConfig.direction === 'asc' 
+            ? dateA.getTime() - dateB.getTime()
+            : dateB.getTime() - dateA.getTime();
+        }
+        
+        if (sortConfig.key === 'amount') {
+          return sortConfig.direction === 'asc' 
+            ? a.amount - b.amount
+            : b.amount - a.amount;
+        }
+        
+        if (sortConfig.key === 'description') {
+          return sortConfig.direction === 'asc'
+            ? a.description.localeCompare(b.description)
+            : b.description.localeCompare(a.description);
+        }
+        
+        if (sortConfig.key === 'category') {
+          return sortConfig.direction === 'asc'
+            ? a.category.localeCompare(b.category)
+            : b.category.localeCompare(a.category);
+        }
+        
+        return 0;
+      });
+      
+      groups.push(group);
+    });
+    
+    // Sort month groups by date (most recent first)
+    return groups.sort((a, b) => b.month.getTime() - a.month.getTime());
   }, [filteredExpenses, sortConfig]);
   
   // Toggle sort
@@ -111,6 +167,20 @@ export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteEx
   const getSortIcon = (key: keyof Expense) => {
     if (sortConfig.key !== key) return null;
     return sortConfig.direction === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />;
+  };
+
+  // Toggle month expansion
+  const toggleMonthExpansion = (monthKey: string) => {
+    setExpandedMonths(prev => 
+      prev.includes(monthKey)
+        ? prev.filter(m => m !== monthKey)
+        : [...prev, monthKey]
+    );
+  };
+
+  // Check if month is expanded
+  const isMonthExpanded = (monthKey: string) => {
+    return expandedMonths.includes(monthKey);
   };
 
   return (
@@ -172,137 +242,171 @@ export function ExpenseTable({ expenses, onAddExpense, onEditExpense, onDeleteEx
       </div>
       
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="notion-db-header">
-              <th 
-                className="font-medium text-left w-2/5 cursor-pointer"
-                onClick={() => requestSort('description')}
-              >
-                <div className="flex items-center">
-                  Description {getSortIcon('description')}
-                </div>
-              </th>
-              <th 
-                className="font-medium text-left w-1/5 cursor-pointer"
-                onClick={() => requestSort('amount')}
-              >
-                <div className="flex items-center">
-                  Amount {getSortIcon('amount')}
-                </div>
-              </th>
-              <th 
-                className="font-medium text-left w-1/5 cursor-pointer"
-                onClick={() => requestSort('date')}
-              >
-                <div className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-1" />
-                  Date {getSortIcon('date')}
-                </div>
-              </th>
-              <th 
-                className="font-medium text-left w-1/5 cursor-pointer"
-                onClick={() => requestSort('category')}
-              >
-                <div className="flex items-center">
-                  Category {getSortIcon('category')}
-                </div>
-              </th>
-              <th className="font-medium text-left w-12">
-                <div className="flex items-center">
-                  <CheckSquare className="w-4 h-4" />
-                </div>
-              </th>
-              <th className="font-medium text-right w-20">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedExpenses.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="text-center py-8 text-muted-foreground">
-                  {search || selectedCategories.length 
-                    ? "No expenses match your filters" 
-                    : "No expenses yet"}
-                </td>
-              </tr>
-            ) : (
-              sortedExpenses.map(expense => (
-                <ContextMenu key={expense.id}>
-                  <ContextMenuTrigger asChild>
-                    <tr className="notion-db-row group">
-                      <td className="font-medium">{expense.description}</td>
-                      <td className="text-muted-foreground">{formatCurrency(expense.amount)}</td>
-                      <td className="text-muted-foreground">
-                        {format(expense.date, 'MMM d, yyyy')}
-                      </td>
-                      <td>
-                        <CategoryBadge category={expense.category} />
-                      </td>
-                      <td>
-                        {expense.isRecurring && (
-                          <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                            ↻
-                          </span>
-                        )}
-                      </td>
-                      <td className="text-right">
-                        <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {onEditExpense && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onEditExpense(expense);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                          )}
-                          {onDeleteExpense && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-destructive" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteExpense(expense.id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Delete</span>
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    {onEditExpense && (
-                      <ContextMenuItem onClick={() => onEditExpense(expense)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit expense
-                      </ContextMenuItem>
-                    )}
-                    {onDeleteExpense && (
-                      <ContextMenuItem 
-                        onClick={() => onDeleteExpense(expense.id)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete expense
-                      </ContextMenuItem>
-                    )}
-                  </ContextMenuContent>
-                </ContextMenu>
-              ))
-            )}
-          </tbody>
-        </table>
+        {monthGroups.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            {search || selectedCategories.length 
+              ? "No expenses match your filters" 
+              : "No expenses yet"}
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {monthGroups.map((group) => {
+              const monthKey = format(group.month, 'yyyy-MM');
+              const expanded = isMonthExpanded(monthKey);
+              
+              return (
+                <Collapsible 
+                  key={monthKey}
+                  open={expanded}
+                  onOpenChange={() => toggleMonthExpansion(monthKey)}
+                  className="w-full"
+                >
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer">
+                      <div className="flex items-center">
+                        {expanded ? <ChevronDown className="h-4 w-4 mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
+                        <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <span className="font-medium">{group.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          {group.expenses.length} {group.expenses.length === 1 ? 'expense' : 'expenses'}
+                        </span>
+                        <span className="font-medium">{formatCurrency(group.total)}</span>
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="notion-db-header">
+                          <th 
+                            className="font-medium text-left w-2/5 cursor-pointer"
+                            onClick={() => requestSort('description')}
+                          >
+                            <div className="flex items-center">
+                              Description {getSortIcon('description')}
+                            </div>
+                          </th>
+                          <th 
+                            className="font-medium text-left w-1/5 cursor-pointer"
+                            onClick={() => requestSort('amount')}
+                          >
+                            <div className="flex items-center">
+                              Amount {getSortIcon('amount')}
+                            </div>
+                          </th>
+                          <th 
+                            className="font-medium text-left w-1/5 cursor-pointer"
+                            onClick={() => requestSort('date')}
+                          >
+                            <div className="flex items-center">
+                              <Calendar className="w-4 h-4 mr-1" />
+                              Date {getSortIcon('date')}
+                            </div>
+                          </th>
+                          <th 
+                            className="font-medium text-left w-1/5 cursor-pointer"
+                            onClick={() => requestSort('category')}
+                          >
+                            <div className="flex items-center">
+                              Category {getSortIcon('category')}
+                            </div>
+                          </th>
+                          <th className="font-medium text-left w-12">
+                            <div className="flex items-center">
+                              <CheckSquare className="w-4 h-4" />
+                            </div>
+                          </th>
+                          <th className="font-medium text-right w-20">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.expenses.map(expense => (
+                          <ContextMenu key={expense.id}>
+                            <ContextMenuTrigger asChild>
+                              <tr className="notion-db-row group">
+                                <td className="font-medium">{expense.description}</td>
+                                <td className="text-muted-foreground">{formatCurrency(expense.amount)}</td>
+                                <td className="text-muted-foreground">
+                                  {expense.date instanceof Date
+                                    ? format(expense.date, 'MMM d, yyyy')
+                                    : format(new Date(expense.date), 'MMM d, yyyy')}
+                                </td>
+                                <td>
+                                  <CategoryBadge category={expense.category} />
+                                </td>
+                                <td>
+                                  {expense.isRecurring && (
+                                    <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                      ↻
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="text-right">
+                                  <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {onEditExpense && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8" 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onEditExpense(expense);
+                                        }}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                        <span className="sr-only">Edit</span>
+                                      </Button>
+                                    )}
+                                    {onDeleteExpense && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 text-destructive" 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onDeleteExpense(expense.id);
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                        <span className="sr-only">Delete</span>
+                                      </Button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent>
+                              {onEditExpense && (
+                                <ContextMenuItem onClick={() => onEditExpense(expense)}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Edit expense
+                                </ContextMenuItem>
+                              )}
+                              {onDeleteExpense && (
+                                <ContextMenuItem 
+                                  onClick={() => onDeleteExpense(expense.id)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete expense
+                                </ContextMenuItem>
+                              )}
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        ))}
+                      </tbody>
+                    </table>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

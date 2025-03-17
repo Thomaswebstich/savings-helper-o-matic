@@ -20,6 +20,7 @@ import {
 import { ExpenseForm, ExpenseFormValues } from '@/components/ExpenseForm';
 import { Banknote, Calendar, Coins, CreditCard, ReceiptText, TrendingDown, TrendingUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Index() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -30,16 +31,60 @@ export default function Index() {
   const [monthlyIncome, setMonthlyIncome] = useState<number>(MONTHLY_INCOME);
   const [timeRange, setTimeRange] = useState({ monthsBack: 6, monthsForward: 3 });
   
-  // Load mock data on component mount
+  // Load data from Supabase on component mount
   useEffect(() => {
-    // Simulate loading delay for a more realistic experience
-    const timer = setTimeout(() => {
-      const mockData = generateMockExpenses();
-      setExpenses(mockData);
-      setIsLoading(false);
-    }, 800);
+    async function fetchExpenses() {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('expenses')
+          .select('*')
+          .order('date', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          // Transform database data to match our Expense type
+          const transformedExpenses: Expense[] = data.map(item => ({
+            id: item.id,
+            description: item.description,
+            amount: parseFloat(item.amount),
+            date: new Date(item.date),
+            category: item.category as any,
+            isRecurring: item.is_recurring || false,
+            recurrenceInterval: item.recurrence_interval as any,
+            stopDate: item.stop_date ? new Date(item.stop_date) : undefined,
+            currency: item.currency as Currency || 'THB'
+          }));
+          
+          setExpenses(transformedExpenses);
+        } else {
+          // Load mock data if no data in database
+          const mockData = generateMockExpenses();
+          setExpenses(mockData);
+          
+          // Optionally, you can seed the database with mock data
+          // await seedDatabaseWithMockData(mockData);
+        }
+      } catch (error) {
+        console.error('Error fetching expenses:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load expenses. Using mock data instead.",
+          variant: "destructive"
+        });
+        
+        // Fallback to mock data
+        const mockData = generateMockExpenses();
+        setExpenses(mockData);
+      } finally {
+        setIsLoading(false);
+      }
+    }
     
-    return () => clearTimeout(timer);
+    fetchExpenses();
   }, []);
   
   // Calculate monthly totals for charts with current time range
@@ -113,17 +158,45 @@ export default function Index() {
   }, [expenses, displayCurrency]);
   
   // Handle adding a new expense
-  const handleAddExpense = (data: ExpenseFormValues) => {
+  const handleAddExpense = async (data: ExpenseFormValues) => {
     const newExpense: Expense = {
       id: crypto.randomUUID(),
       ...data
     };
     
+    // Add to local state first for immediate UI update
     setExpenses(prev => [newExpense, ...prev]);
-    toast({
-      title: "Success",
-      description: "Expense added successfully",
-    });
+    
+    // Save to database
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .insert({
+          id: newExpense.id,
+          description: newExpense.description,
+          amount: newExpense.amount,
+          date: newExpense.date.toISOString().split('T')[0],
+          category: newExpense.category,
+          is_recurring: newExpense.isRecurring,
+          recurrence_interval: newExpense.recurrenceInterval,
+          stop_date: newExpense.stopDate ? newExpense.stopDate.toISOString().split('T')[0] : null,
+          currency: newExpense.currency
+        });
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Expense added successfully",
+      });
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save expense to database, but it's available in your current session",
+        variant: "destructive"
+      });
+    }
   };
   
   // Handle editing an expense
@@ -133,20 +206,51 @@ export default function Index() {
   };
   
   // Handle form submission for both add and edit
-  const handleFormSubmit = (data: ExpenseFormValues) => {
+  const handleFormSubmit = async (data: ExpenseFormValues) => {
     if (currentExpense) {
       // Update existing expense
+      const updatedExpense = { ...currentExpense, ...data };
+      
+      // Update local state first
       setExpenses(prev => 
         prev.map(exp => 
           exp.id === currentExpense.id 
-            ? { ...exp, ...data } 
+            ? updatedExpense 
             : exp
         )
       );
-      toast({
-        title: "Success",
-        description: "Expense updated successfully",
-      });
+      
+      // Update in database
+      try {
+        const { error } = await supabase
+          .from('expenses')
+          .update({
+            description: data.description,
+            amount: data.amount,
+            date: data.date.toISOString().split('T')[0],
+            category: data.category,
+            is_recurring: data.isRecurring,
+            recurrence_interval: data.recurrenceInterval,
+            stop_date: data.stopDate ? data.stopDate.toISOString().split('T')[0] : null,
+            currency: data.currency
+          })
+          .eq('id', currentExpense.id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "Expense updated successfully",
+        });
+      } catch (error) {
+        console.error('Error updating expense:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update expense in database, but it's updated in your current session",
+          variant: "destructive"
+        });
+      }
+      
       setCurrentExpense(null);
     } else {
       // Add new expense
@@ -155,12 +259,31 @@ export default function Index() {
   };
   
   // Handle deleting an expense
-  const handleDeleteExpense = (id: string) => {
+  const handleDeleteExpense = async (id: string) => {
+    // Update local state first
     setExpenses(prev => prev.filter(exp => exp.id !== id));
-    toast({
-      title: "Success",
-      description: "Expense deleted successfully",
-    });
+    
+    // Delete from database
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Expense deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete expense from database, but it's removed from your current session",
+        variant: "destructive"
+      });
+    }
   };
   
   // Close form and reset current expense

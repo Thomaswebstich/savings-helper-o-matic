@@ -1,42 +1,34 @@
 
-import { useState, useEffect } from 'react';
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Category, CATEGORIES, Currency, Expense, CURRENCY_SYMBOLS } from '@/lib/data';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { format, isValid } from 'date-fns';
-import { CalendarClock, CalendarIcon, Check, Euro, DollarSign, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { CalendarIcon, Check, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { CategoryBadge } from './CategoryBadge';
+import { Expense, Category, CATEGORIES, Currency, EXCHANGE_RATES } from '@/lib/data';
+import { cn } from '@/lib/utils';
+
+// Define the form values type
+export type ExpenseFormValues = Omit<Expense, 'id'>;
+
+const formSchema = z.object({
+  description: z.string().min(1, { message: 'Description is required' }),
+  amount: z.number().min(0.01, { message: 'Amount must be greater than 0' }),
+  date: z.date(),
+  category: z.enum(CATEGORIES as [Category, ...Category[]]),
+  isRecurring: z.boolean().default(false),
+  recurrenceInterval: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
+  stopDate: z.date().optional(),
+  currency: z.enum(['THB', 'USD', 'EUR'] as [Currency, ...Currency[]]).default('THB'),
+});
 
 interface ExpenseFormProps {
   open: boolean;
@@ -45,103 +37,69 @@ interface ExpenseFormProps {
   initialValues?: Expense | null;
 }
 
-export interface ExpenseFormValues {
-  description: string;
-  amount: number;
-  date: Date;
-  category: Category;
-  isRecurring: boolean;
-  recurrenceInterval?: "daily" | "weekly" | "monthly" | "yearly";
-  stopDate?: Date | null;
-  currency: Currency;
-}
-
-// Define our form schema with Zod
-const formSchema = z.object({
-  description: z.string().min(2, {
-    message: "Description must be at least 2 characters.",
-  }),
-  amount: z.coerce.number().positive({
-    message: "Amount must be a positive number.",
-  }),
-  date: z.date(),
-  category: z.enum(CATEGORIES as [Category, ...Category[]]),
-  isRecurring: z.boolean().default(false),
-  recurrenceInterval: z.enum(["daily", "weekly", "monthly", "yearly"]).optional(),
-  stopDate: z.date().nullable().optional(),
-  currency: z.enum(["THB", "USD", "EUR"] as [Currency, ...Currency[]]),
-});
-
 export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseFormProps) {
-  // Define our form with react-hook-form and zod
-  const form = useForm<z.infer<typeof formSchema>>({
+  // Initialize form with react-hook-form
+  const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      description: "",
+      description: '',
       amount: 0,
       date: new Date(),
-      category: "Other",
+      category: 'Other',
       isRecurring: false,
-      currency: "THB",
-    },
+      currency: 'THB'
+    }
   });
   
-  // Update form values when initialValues changes
+  // Reset form when initial values change
   useEffect(() => {
     if (initialValues) {
+      // If we have initial values, set them in the form
       form.reset({
         description: initialValues.description,
         amount: initialValues.amount,
-        date: initialValues.date,
+        date: initialValues.date instanceof Date 
+          ? initialValues.date 
+          : new Date(initialValues.date),
         category: initialValues.category,
         isRecurring: initialValues.isRecurring,
         recurrenceInterval: initialValues.recurrenceInterval,
-        stopDate: initialValues.stopDate || null,
-        currency: initialValues.currency || "THB",
+        stopDate: initialValues.stopDate,
+        currency: initialValues.currency
       });
     } else {
+      // Reset to defaults if no initial values
       form.reset({
-        description: "",
+        description: '',
         amount: 0,
         date: new Date(),
-        category: "Other",
+        category: 'Other',
         isRecurring: false,
-        currency: "THB",
+        currency: 'THB'
       });
     }
-  }, [initialValues, form]);
+  }, [initialValues, form, open]);
   
   // Handle form submission
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    onSubmit(values as ExpenseFormValues);
-    form.reset();
+  const handleSubmit = (values: ExpenseFormValues) => {
+    onSubmit(values);
     onClose();
   };
 
-  // Determine currency symbol based on selected currency
-  const getCurrencySymbol = (currency: Currency) => {
-    return CURRENCY_SYMBOLS[currency] || "฿";
-  };
-
-  // Determine dialog title based on whether we're editing or adding
-  const dialogTitle = initialValues ? "Edit expense" : "Add new expense";
-  const dialogDescription = initialValues 
-    ? "Update the details of your expense." 
-    : "Add a new expense to your tracker.";
-  const submitButtonText = initialValues ? "Update Expense" : "Add Expense";
-  
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md animate-scale-in">
-        <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>
-            {dialogDescription}
-          </DialogDescription>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <SheetContent className="md:max-w-xl w-full overflow-y-auto sm:max-h-[90vh] mx-auto inset-0 h-auto mt-16 mb-16 rounded-t-lg sm:rounded-lg">
+        <SheetHeader className="pb-4">
+          <SheetTitle>{initialValues ? 'Edit Expense' : 'Add Expense'}</SheetTitle>
+          <SheetDescription>
+            {initialValues 
+              ? 'Update the expense details below.' 
+              : 'Enter the details of your expense.'}
+          </SheetDescription>
+        </SheetHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="description"
@@ -149,7 +107,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input placeholder="Lunch, Groceries, etc." {...field} />
+                    <Input {...field} placeholder="Grocery shopping" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -164,18 +122,13 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
                   <FormItem>
                     <FormLabel>Amount</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-muted-foreground">
-                          {getCurrencySymbol(form.watch("currency"))}
-                        </span>
-                        <Input 
-                          type="number" 
-                          placeholder="0.00" 
-                          step="0.01" 
-                          className="pl-8" 
-                          {...field}
-                        />
-                      </div>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        {...field} 
+                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                        placeholder="100.00" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -188,31 +141,90 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Currency</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select currency" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="THB">
-                          <div className="flex items-center">
-                            <span className="mr-2">฿</span>
-                            <span>Thai Baht (THB)</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="USD">
-                          <div className="flex items-center">
-                            <DollarSign className="h-4 w-4 mr-2" />
-                            <span>US Dollar (USD)</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="EUR">
-                          <div className="flex items-center">
-                            <Euro className="h-4 w-4 mr-2" />
-                            <span>Euro (EUR)</span>
-                          </div>
-                        </SelectItem>
+                        <SelectItem value="THB">Thai Baht (฿)</SelectItem>
+                        <SelectItem value="USD">US Dollar ($)</SelectItem>
+                        <SelectItem value="EUR">Euro (€)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {CATEGORIES.map(category => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -223,80 +235,13 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
             
             <FormField
               control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {CATEGORIES.map((category) => (
-                        <SelectItem key={category} value={category} className="flex items-center">
-                          <div className="flex items-center">
-                            <CategoryBadge category={category} />
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
               name="isRecurring"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Recurring Expense</FormLabel>
                     <FormDescription>
-                      This expense repeats on a regular basis.
+                      Is this a recurring payment?
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -309,15 +254,19 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
               )}
             />
             
-            {form.watch("isRecurring") && (
+            {form.watch('isRecurring') && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="recurrenceInterval"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Recurrence</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <FormLabel>Recurrence Interval</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select interval" />
@@ -340,7 +289,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
                   name="stopDate"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Stop Date (Optional)</FormLabel>
+                      <FormLabel>End Date (Optional)</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -351,37 +300,43 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
                                 !field.value && "text-muted-foreground"
                               )}
                             >
-                              {field.value && isValid(field.value) ? (
+                              {field.value ? (
                                 format(field.value, "PPP")
                               ) : (
                                 <span>No end date</span>
                               )}
-                              <CalendarClock className="ml-auto h-4 w-4 opacity-50" />
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <div className="p-2 flex justify-between border-b">
-                            <Button
-                              variant="ghost"
+                          <div className="p-2 flex justify-between">
+                            <Button 
+                              variant="ghost" 
                               size="sm"
-                              onClick={() => field.onChange(null)}
+                              onClick={() => {
+                                field.onChange(undefined);
+                                const popover = document.querySelector('[data-radix-popper-content-wrapper]');
+                                if (popover instanceof HTMLElement) {
+                                  popover.style.display = 'none';
+                                }
+                              }}
                             >
+                              <X className="mr-2 h-4 w-4" />
                               Clear
                             </Button>
                           </div>
                           <Calendar
                             mode="single"
-                            selected={field.value || undefined}
+                            selected={field.value ?? undefined}
                             onSelect={field.onChange}
+                            disabled={(date) => date < form.getValues('date')}
                             initialFocus
-                            fromDate={new Date()} // Only future dates
-                            className="p-3 pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>
                       <FormDescription>
-                        When this recurring expense should stop.
+                        When this recurring expense stops.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -390,17 +345,17 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues }: ExpenseF
               </div>
             )}
             
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={onClose}>
-                <X className="mr-2 h-4 w-4" /> Cancel
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button variant="outline" type="button" onClick={onClose}>
+                Cancel
               </Button>
               <Button type="submit">
-                <Check className="mr-2 h-4 w-4" /> {submitButtonText}
+                {initialValues ? 'Update' : 'Add'} Expense
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -363,3 +363,32 @@ export const formatCurrency = (amount: number, currency: Currency = "THB"): stri
     minimumFractionDigits: 2
   }).format(amount);
 };
+
+// Function to seed database with mock data
+export const seedDatabaseWithMockData = async (expenses: Expense[]) => {
+  const { supabase } = await import('@/integrations/supabase/client');
+  
+  // Transform expenses to DB format
+  const dbExpenses = expenses.map(expense => ({
+    id: expense.id,
+    description: expense.description,
+    amount: expense.amount,
+    date: expense.date.toISOString().split('T')[0],
+    category: expense.category,
+    is_recurring: expense.isRecurring,
+    recurrence_interval: expense.recurrenceInterval,
+    stop_date: expense.stopDate ? expense.stopDate.toISOString().split('T')[0] : null,
+    currency: expense.currency
+  }));
+  
+  // Insert in batches to avoid potential payload size issues
+  const batchSize = 50;
+  for (let i = 0; i < dbExpenses.length; i += batchSize) {
+    const batch = dbExpenses.slice(i, i + batchSize);
+    const { error } = await supabase.from('expenses').insert(batch);
+    if (error) {
+      console.error('Error seeding database:', error);
+      break;
+    }
+  }
+};
