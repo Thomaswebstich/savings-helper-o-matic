@@ -17,6 +17,7 @@ import {
   YAxis
 } from 'recharts';
 import { CategoryBadge } from './CategoryBadge';
+import { ChartLegendContent } from '@/components/ui/chart';
 import {
   Tabs,
   TabsContent,
@@ -83,7 +84,7 @@ export function FinancialCharts({
       categoryId: "Other",
       categoryName: "Other",
       amount: otherAmount,
-      budget: undefined, // Add the budget property (undefined for "Other")
+      budget: undefined, // Make budget field explicitly undefined for the "Other" category
       percentage: convertedCategoryData
         .slice(5)
         .reduce((sum, category) => sum + category.percentage, 0),

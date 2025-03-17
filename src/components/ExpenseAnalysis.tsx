@@ -1,6 +1,6 @@
 
 import { useState, useMemo } from 'react';
-import { Expense, CategoryTotal, formatCurrency, Currency } from '@/lib/data';
+import { Expense, CategoryTotal, formatCurrency, Currency, convertCurrency, CURRENCY_SYMBOLS } from '@/lib/data';
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie } from 'recharts';
 import { CategoryBadge } from './CategoryBadge';
 import { ChartLegendContent } from '@/components/ui/chart';
@@ -51,7 +51,7 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
     });
   }, [expenses, timeFrame]);
   
-  // Calculate per-day, per-week, and per-month average
+  // Calculate per-day, per-week, and per-month average with proper currency conversion
   const averages = useMemo(() => {
     const days = parseInt(timeFrame);
     if (days <= 0 || filteredExpenses.length === 0) return { daily: 0, weekly: 0, monthly: 0 };
@@ -63,7 +63,8 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
     let nonRecurringTotal = 0;
     
     filteredExpenses.forEach(expense => {
-      const amount = expense.amount;
+      // Convert to the display currency
+      const amount = convertCurrency(expense.amount, expense.currency, currency);
       
       if (expense.isRecurring) {
         switch (expense.recurrenceInterval) {
@@ -94,9 +95,9 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
       weekly: daily * 7,
       monthly: daily * 30,
     };
-  }, [filteredExpenses, timeFrame]);
+  }, [filteredExpenses, timeFrame, currency]);
   
-  // Calculate category breakdown for filtered expenses
+  // Calculate category breakdown for filtered expenses with currency conversion
   const filteredCategoryData = useMemo(() => {
     // Group by category
     const categoryMap = new Map<string, number>();
@@ -105,8 +106,11 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
       const categoryKey = expense.category || expense.categoryId;
       if (!categoryKey) return;
       
+      // Convert to the display currency
+      const amount = convertCurrency(expense.amount, expense.currency, currency);
+      
       const current = categoryMap.get(categoryKey) || 0;
-      categoryMap.set(categoryKey, current + expense.amount);
+      categoryMap.set(categoryKey, current + amount);
     });
     
     // Calculate total
@@ -121,6 +125,7 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
         categoryName: categoryKey, // We'll use the category ID/name as the display name
         amount,
         percentage,
+        budget: undefined, // Add budget property (undefined for filtered data)
         color: '' // This will be filled in by CategoryBadge
       };
     });
@@ -131,23 +136,23 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
     } else {
       return catData.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
     }
-  }, [filteredExpenses, sortBy]);
+  }, [filteredExpenses, sortBy, currency]);
   
-  // Calculate recurring vs one-time expense ratio
+  // Calculate recurring vs one-time expense ratio with currency conversion
   const recurringVsOneTime = useMemo(() => {
     const recurring = filteredExpenses
       .filter(expense => expense.isRecurring)
-      .reduce((sum, expense) => sum + expense.amount, 0);
+      .reduce((sum, expense) => sum + convertCurrency(expense.amount, expense.currency, currency), 0);
       
     const oneTime = filteredExpenses
       .filter(expense => !expense.isRecurring)
-      .reduce((sum, expense) => sum + expense.amount, 0);
+      .reduce((sum, expense) => sum + convertCurrency(expense.amount, expense.currency, currency), 0);
       
     return [
       { name: 'Recurring', value: recurring },
       { name: 'One-time', value: oneTime }
     ];
-  }, [filteredExpenses]);
+  }, [filteredExpenses, currency]);
   
   // Format tooltip values
   const formatTooltipValue = (value: number) => {
@@ -218,7 +223,7 @@ export function ExpenseAnalysis({ expenses, categoryData, currency = "THB" }: Ex
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.2} />
-                <XAxis type="number" tickFormatter={(value) => formatCurrency(value, currency)} />
+                <XAxis type="number" tickFormatter={(value) => `${CURRENCY_SYMBOLS[currency]}${value}`} />
                 <YAxis type="category" dataKey="categoryName" width={100} />
                 <Tooltip 
                   formatter={formatTooltipValue}

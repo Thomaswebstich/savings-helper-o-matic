@@ -1,5 +1,5 @@
 
-import { MonthlyTotal, formatCurrency, Currency } from '@/lib/data';
+import { MonthlyTotal, formatCurrency, Currency, CURRENCY_SYMBOLS, convertCurrency } from '@/lib/data';
 import { useMemo } from 'react';
 import { ArrowRight, CalendarRange, Calculator, DollarSign, LineChart, TrendingUp } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -63,7 +63,10 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
         return month.month.includes(year.toString());
       });
       
-      const totalSavings = monthsInYear.reduce((sum, month) => sum + month.savings, 0);
+      const totalSavings = monthsInYear.reduce((sum, month) => {
+        return sum + convertCurrency(month.savings, "THB", currency);
+      }, 0);
+      
       const avgMonthlySavings = monthsInYear.length > 0 ? totalSavings / monthsInYear.length : 0;
       
       return {
@@ -73,20 +76,30 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
         monthsDataAvailable: monthsInYear.length
       };
     });
-  }, [projectedSavings]);
+  }, [projectedSavings, currency]);
   
   // Calculate rolling sum projections
   const cumulativeSavings = useMemo(() => {
     let sum = 0;
     return projectedSavings.map(month => {
-      sum += month.savings;
+      const convertedSavings = convertCurrency(month.savings, "THB", currency);
+      sum += convertedSavings;
       return {
         month: month.month,
-        savings: month.savings,
+        savings: convertedSavings,
         cumulativeTotal: sum
       };
     });
-  }, [projectedSavings]);
+  }, [projectedSavings, currency]);
+  
+  // Convert current month data to display currency
+  const currentMonthDisplayData = useMemo(() => {
+    if (!currentMonthData) return { savings: 0 };
+    
+    return {
+      savings: convertCurrency(currentMonthData.savings, "THB", currency)
+    };
+  }, [currentMonthData, currency]);
   
   return (
     <div className="glass-card p-6 animate-slide-up w-full space-y-6">
@@ -111,7 +124,7 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
               <div>
                 <div className="text-sm text-muted-foreground">This Month</div>
                 <div className="text-xl font-medium">
-                  {currentMonthData ? formatCurrency(currentMonthData.savings, currency) : "₹0.00"}
+                  {currentMonthData ? formatCurrency(currentMonthDisplayData.savings, currency) : `${CURRENCY_SYMBOLS[currency]}0.00`}
                 </div>
               </div>
             </div>
@@ -158,7 +171,7 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
           <div className="bg-muted/50 rounded-lg p-3 space-y-2">
             {[1, 3, 5].map(years => {
               const avgMonthlySaving = projectedSavings.length > 0 
-                ? projectedSavings.reduce((sum, month) => sum + month.savings, 0) / projectedSavings.length 
+                ? projectedSavings.reduce((sum, month) => sum + convertCurrency(month.savings, "THB", currency), 0) / projectedSavings.length 
                 : 0;
                 
               const projection = avgMonthlySaving * 12 * years;
@@ -174,7 +187,7 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
         </div>
       </div>
       
-      {/* Monthly Breakdown Table */}
+      {/* Monthly Breakdown Table - Now in reversed order (newest months at top) */}
       <div className="mt-6">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-medium">Monthly Breakdown</h4>
@@ -191,7 +204,7 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cumulativeSavings.slice(0, 12).map((item, index) => (
+              {[...cumulativeSavings.slice(0, 12)].reverse().map((item, index) => (
                 <TableRow key={item.month}>
                   <TableCell>{item.month}</TableCell>
                   <TableCell className={item.savings >= 0 ? "text-green-600" : "text-red-600"}>
