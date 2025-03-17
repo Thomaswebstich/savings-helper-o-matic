@@ -7,6 +7,8 @@ interface ChartHeaderProps {
   projectedMonthsCount: number;
   showSavings: boolean;
   setShowSavings: (value: boolean) => void;
+  showCompounded?: boolean;
+  setShowCompounded?: (value: boolean) => void;
 }
 
 export function ChartHeader({
@@ -14,6 +16,8 @@ export function ChartHeader({
   projectedMonthsCount,
   showSavings,
   setShowSavings,
+  showCompounded,
+  setShowCompounded,
 }: ChartHeaderProps) {
   return (
     <div className="flex justify-between items-center mb-3">
@@ -25,14 +29,28 @@ export function ChartHeader({
         )}
       </div>
       
-      <div className="flex items-center space-x-2">
-        <Switch 
-          id="show-savings" 
-          checked={showSavings} 
-          onCheckedChange={setShowSavings} 
-          className="data-[state=checked]:bg-green-500"
-        />
-        <Label htmlFor="show-savings" className="text-xs">Show Savings</Label>
+      <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <Switch 
+            id="show-savings" 
+            checked={showSavings} 
+            onCheckedChange={setShowSavings} 
+            className="data-[state=checked]:bg-green-500"
+          />
+          <Label htmlFor="show-savings" className="text-xs">Show Savings</Label>
+        </div>
+        
+        {showCompounded !== undefined && setShowCompounded && (
+          <div className="flex items-center space-x-2">
+            <Switch 
+              id="show-compounded" 
+              checked={showCompounded} 
+              onCheckedChange={setShowCompounded} 
+              className="data-[state=checked]:bg-blue-500"
+            />
+            <Label htmlFor="show-compounded" className="text-xs">Compounded</Label>
+          </div>
+        )}
       </div>
     </div>
   );

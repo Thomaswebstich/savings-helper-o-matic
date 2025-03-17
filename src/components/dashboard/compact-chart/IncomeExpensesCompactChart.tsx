@@ -19,6 +19,7 @@ export function IncomeExpensesCompactChart({
   displayCurrency 
 }: IncomeExpensesCompactChartProps) {
   const [showSavings, setShowSavings] = useState(false);
+  const [showCompounded, setShowCompounded] = useState(false);
   
   const {
     visibleData,
@@ -31,7 +32,7 @@ export function IncomeExpensesCompactChart({
     projectedMonthsCount,
     handleSliderChange,
     handleAdjustProjection
-  } = useChartData(monthlyData);
+  } = useChartData(monthlyData, showCompounded);
   
   if (isLoading) {
     return (
@@ -54,6 +55,8 @@ export function IncomeExpensesCompactChart({
           projectedMonthsCount={projectedMonthsCount}
           showSavings={showSavings}
           setShowSavings={setShowSavings}
+          showCompounded={showCompounded}
+          setShowCompounded={setShowCompounded}
         />
         
         <ChartSummary

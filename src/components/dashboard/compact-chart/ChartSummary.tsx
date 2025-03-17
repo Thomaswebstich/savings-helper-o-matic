@@ -1,5 +1,5 @@
 
-import { CURRENCY_SYMBOLS, Currency } from '@/lib/data';
+import { CURRENCY_SYMBOLS, Currency, convertCurrency } from '@/lib/data';
 
 interface ChartSummaryProps {
   currentData: {

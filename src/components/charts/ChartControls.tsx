@@ -36,9 +36,12 @@ export function ChartControls({
   }, [sliderPosition]);
   
   const handleSliderChange = (value: number[]) => {
+    if (value.length === 0) return;
     setSliderValue(value);
     onSliderChange(value);
   };
+  
+  const maxSliderValue = Math.max(0, totalDataLength - 12);
   
   return (
     <div className={`flex flex-col space-y-3 w-full ${className}`}>
@@ -51,7 +54,8 @@ export function ChartControls({
         <div className="flex-1">
           <Slider 
             value={sliderValue} 
-            max={Math.max(0, totalDataLength - 12)} 
+            max={maxSliderValue > 0 ? maxSliderValue : 1} 
+            min={0}
             step={1} 
             onValueChange={handleSliderChange}
             className="h-3"

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { MonthlyTotal } from '@/lib/data';
+import { MonthlyTotal, convertCurrency } from '@/lib/data';
 
 interface ChartDataPoint {
   date: string;
@@ -11,7 +11,7 @@ interface ChartDataPoint {
   isProjection: boolean;
 }
 
-export function useChartData(monthlyData: MonthlyTotal[]) {
+export function useChartData(monthlyData: MonthlyTotal[], showCompounded: boolean = false) {
   const [data, setData] = useState<ChartDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sliderPosition, setSliderPosition] = useState(0);
@@ -26,7 +26,7 @@ export function useChartData(monthlyData: MonthlyTotal[]) {
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
       
-      const transformedData = monthlyData.map((month) => {
+      let transformedData = monthlyData.map((month) => {
         const [monthName, yearStr] = month.month.split(' ');
         const date = new Date(`${monthName} 1, ${yearStr}`);
         
@@ -42,6 +42,18 @@ export function useChartData(monthlyData: MonthlyTotal[]) {
           isProjection
         };
       });
+      
+      // If showing compounded savings, calculate cumulative savings for projected months
+      if (showCompounded) {
+        let cumulativeSavings = 0;
+        transformedData = transformedData.map((item, index) => {
+          if (item.isProjection) {
+            cumulativeSavings += item.savings;
+            return { ...item, savings: cumulativeSavings };
+          }
+          return item;
+        });
+      }
       
       setData(transformedData);
       
@@ -65,9 +77,11 @@ export function useChartData(monthlyData: MonthlyTotal[]) {
       setData([]);
       setIsLoading(false);
     }
-  }, [monthlyData]);
+  }, [monthlyData, showCompounded]);
   
   const handleSliderChange = (value: number[]) => {
+    if (value.length === 0) return;
+    
     const newStart = value[0];
     const newEnd = Math.min(newStart + 12, data.length);
     
