@@ -89,6 +89,7 @@ export default function Index() {
               expenseChange={expenseChange}
               savingsChange={savingsChange}
               displayCurrency={displayCurrency}
+              monthlyData={monthlyData}
             />
             
             {expenses.length > 0 ? (
