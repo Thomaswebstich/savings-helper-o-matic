@@ -1,7 +1,6 @@
 
-import { useState } from 'react';
 import { Calendar } from 'lucide-react';
-import { ExpenseTable } from '@/components/ExpenseTable';
+import { ExpenseTable } from '@/components/expense-table';
 import { Expense, Category } from '@/lib/data';
 
 interface ExpenseTableWrapperProps {
