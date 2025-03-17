@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { TabsContent } from "@/components/ui/tabs";
 import { Expense, formatCurrency, Currency, convertCurrency } from '@/lib/data';
+import { StackedBar } from '@/components/ui/stacked-bar';
 
 interface CategoryCostBreakdownProps {
   filteredExpenses: Expense[];
@@ -13,9 +14,15 @@ export function CategoryCostBreakdown({
   currency 
 }: CategoryCostBreakdownProps) {
   
-  // Calculate category averages
-  const categoryAverages = useMemo(() => {
-    if (filteredExpenses.length === 0) return [];
+  // Calculate category data
+  const { categoryData, totalAmount, timePeriodStats } = useMemo(() => {
+    if (filteredExpenses.length === 0) {
+      return { 
+        categoryData: [], 
+        totalAmount: 0,
+        timePeriodStats: { days: 1, weeks: 0.143, months: 0.033 }
+      };
+    }
     
     const categoryMap = new Map<string, {
       id: string,
@@ -54,16 +61,26 @@ export function CategoryCostBreakdown({
     const totalSpending = filteredExpenses.reduce((sum, expense) => 
       sum + convertCurrency(expense.amount, expense.currency || "THB", currency), 0);
     
-    // Calculate averages and sort
-    return Array.from(categoryMap.values())
+    // Calculate time period stats for correct averages
+    const timePeriodStats = {
+      days: daysDiff,
+      weeks: daysDiff / 7,
+      months: daysDiff / 30
+    };
+    
+    // Sort by amount
+    const categoryData = Array.from(categoryMap.values())
       .map(category => ({
         ...category,
-        daily: category.total / daysDiff,
-        weekly: (category.total / daysDiff) * 7,
-        monthly: (category.total / daysDiff) * 30,
         percentage: (category.total / totalSpending) * 100
       }))
       .sort((a, b) => b.total - a.total);
+      
+    return { 
+      categoryData, 
+      totalAmount: totalSpending,
+      timePeriodStats
+    };
       
   }, [filteredExpenses, currency]);
   
@@ -87,88 +104,100 @@ export function CategoryCostBreakdown({
     
     return colors[Math.abs(hash) % colors.length];
   };
+
+  // Create stacked bar data
+  const getStackedBarData = () => {
+    return categoryData.map((category, index) => ({
+      id: category.id,
+      value: category.percentage,
+      color: getCategoryColor(category.id, index)
+    }));
+  };
+  
+  // Render category data for each time period
+  const renderCategories = (period: 'daily' | 'weekly' | 'monthly') => {
+    if (categoryData.length === 0) {
+      return (
+        <div className="text-center text-muted-foreground py-4">
+          No expense data available
+        </div>
+      );
+    }
+    
+    const divisor = period === 'daily' 
+      ? timePeriodStats.days 
+      : period === 'weekly' 
+        ? timePeriodStats.weeks 
+        : timePeriodStats.months;
+    
+    return (
+      <>
+        {/* Stacked bar for overall breakdown */}
+        <div className="mb-4 mt-2">
+          <StackedBar segments={getStackedBarData()} height={8} className="mb-2" />
+          <div className="flex flex-wrap gap-2 text-xs">
+            {categoryData.slice(0, 5).map((category, idx) => (
+              <span key={category.id} className="inline-flex items-center gap-1">
+                <span 
+                  className="inline-block h-2 w-2 rounded-sm" 
+                  style={{ backgroundColor: getCategoryColor(category.id, idx) }}
+                />
+                <span>{category.name}</span>
+                <span className="text-muted-foreground">
+                  {category.percentage.toFixed(1)}%
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          {categoryData.map((category, index) => {
+            // Calculate average for the time period
+            const avgAmount = category.total / divisor;
+            
+            return (
+              <div 
+                key={category.id} 
+                className="flex items-center justify-between p-2 rounded-lg bg-muted/40"
+              >
+                <div className="flex items-center">
+                  <div 
+                    className="w-2 h-8 rounded-sm mr-2" 
+                    style={{ backgroundColor: getCategoryColor(category.id, index) }} 
+                  />
+                  <div>
+                    <div className="text-sm font-medium truncate max-w-[120px]">{category.name}</div>
+                    <div className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}% of total</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-medium">{formatCurrency(avgAmount, currency)}</div>
+                  <div className="text-xs text-muted-foreground">per {period.slice(0, -2)}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>
+    );
+  };
   
   return (
     <>
       <TabsContent value="daily" className="mt-3">
         <div className="text-sm font-medium mb-2">Daily Cost by Category</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-          {categoryAverages.map((category, index) => (
-            <div 
-              key={category.id} 
-              className="flex items-center justify-between p-2 rounded-lg bg-muted/40"
-            >
-              <div className="flex items-center">
-                <div 
-                  className="w-2 h-8 rounded-sm mr-2" 
-                  style={{ backgroundColor: getCategoryColor(category.id, index) }} 
-                />
-                <div>
-                  <div className="text-sm font-medium truncate max-w-[120px]">{category.name}</div>
-                  <div className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}% of total</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="font-medium">{formatCurrency(category.daily, currency)}</div>
-                <div className="text-xs text-muted-foreground">per day</div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {renderCategories('daily')}
       </TabsContent>
       
       <TabsContent value="weekly" className="mt-3">
         <div className="text-sm font-medium mb-2">Weekly Cost by Category</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-          {categoryAverages.map((category, index) => (
-            <div 
-              key={category.id} 
-              className="flex items-center justify-between p-2 rounded-lg bg-muted/40"
-            >
-              <div className="flex items-center">
-                <div 
-                  className="w-2 h-8 rounded-sm mr-2" 
-                  style={{ backgroundColor: getCategoryColor(category.id, index) }} 
-                />
-                <div>
-                  <div className="text-sm font-medium truncate max-w-[120px]">{category.name}</div>
-                  <div className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}% of total</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="font-medium">{formatCurrency(category.weekly, currency)}</div>
-                <div className="text-xs text-muted-foreground">per week</div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {renderCategories('weekly')}
       </TabsContent>
       
       <TabsContent value="monthly" className="mt-3">
         <div className="text-sm font-medium mb-2">Monthly Cost by Category</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-          {categoryAverages.map((category, index) => (
-            <div 
-              key={category.id} 
-              className="flex items-center justify-between p-2 rounded-lg bg-muted/40"
-            >
-              <div className="flex items-center">
-                <div 
-                  className="w-2 h-8 rounded-sm mr-2" 
-                  style={{ backgroundColor: getCategoryColor(category.id, index) }} 
-                />
-                <div>
-                  <div className="text-sm font-medium truncate max-w-[120px]">{category.name}</div>
-                  <div className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}% of total</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="font-medium">{formatCurrency(category.monthly, currency)}</div>
-                <div className="text-xs text-muted-foreground">per month</div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {renderCategories('monthly')}
       </TabsContent>
     </>
   );

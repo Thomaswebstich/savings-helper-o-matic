@@ -4,6 +4,7 @@ import { Expense, formatCurrency, Currency, convertCurrency } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { subDays, isAfter, isBefore } from 'date-fns';
+import { StackedBar } from '@/components/ui/stacked-bar';
 
 interface ExpenseStatsProps {
   filteredExpenses: Expense[];
@@ -27,9 +28,12 @@ export function ExpenseStats({
 }: ExpenseStatsProps) {
   
   // Calculate averages
-  const averages = useMemo(() => {
+  const { averages, daysDiff } = useMemo(() => {
     if (filteredExpenses.length === 0) {
-      return { daily: 0, weekly: 0, monthly: 0 };
+      return { 
+        averages: { daily: 0, weekly: 0, monthly: 0 },
+        daysDiff: 1
+      };
     }
     
     // Find date range
@@ -38,7 +42,7 @@ export function ExpenseStats({
     const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
     
     // Calculate days between
-    const daysDiff = Math.max(1, Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const days = Math.max(1, Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)));
     
     // Calculate total in display currency
     const total = filteredExpenses.reduce((sum, expense) => {
@@ -46,9 +50,12 @@ export function ExpenseStats({
     }, 0);
     
     return {
-      daily: total / daysDiff,
-      weekly: (total / daysDiff) * 7,
-      monthly: (total / daysDiff) * 30
+      averages: {
+        daily: total / days,
+        weekly: (total / days) * 7,
+        monthly: (total / days) * 30
+      },
+      daysDiff: days
     };
   }, [filteredExpenses, currency]);
   
@@ -85,93 +92,19 @@ export function ExpenseStats({
     };
   }, [filteredExpenses, currency]);
   
-  // Get category averages for mini chart
-  const categoryAverages = useMemo(() => {
-    if (filteredExpenses.length === 0) return [];
+  // Prepare stacked bar data
+  const stackedBarData = useMemo(() => {
+    if (categoryData.length === 0) return [];
     
-    const categoryMap = new Map<string, {
-      id: string,
-      name: string,
-      total: number,
-      count: number,
-      color?: string
-    }>();
-    
-    // Group by category
-    filteredExpenses.forEach(expense => {
-      const categoryId = expense.categoryId || 'uncategorized';
-      const categoryName = expense.category || 'Uncategorized';
-      
-      if (!categoryMap.has(categoryId)) {
-        // Find color from categoryData
-        const categoryInfo = categoryData.find(c => c.categoryId === categoryId);
-        
-        categoryMap.set(categoryId, {
-          id: categoryId,
-          name: categoryName,
-          total: 0,
-          count: 0,
-          color: categoryInfo?.color
-        });
-      }
-      
-      const entry = categoryMap.get(categoryId)!;
-      entry.total += convertCurrency(expense.amount, expense.currency || "THB", currency);
-      entry.count += 1;
-    });
-    
-    // Find date range (same as in averages)
-    const dates = filteredExpenses.map(e => e.date instanceof Date ? e.date : new Date(e.date));
-    const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
-    const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
-    const daysDiff = Math.max(1, Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)));
-    
-    // Calculate averages and sort
-    return Array.from(categoryMap.values())
-      .map(category => ({
-        ...category,
-        daily: category.total / daysDiff,
-        weekly: (category.total / daysDiff) * 7,
-        monthly: (category.total / daysDiff) * 30,
-        percentage: category.total / filteredExpenses.reduce((sum, e) => 
-          sum + convertCurrency(e.amount, e.currency || "THB", currency), 0) * 100
-      }))
-      .sort((a, b) => b.total - a.total);
-      
-  }, [filteredExpenses, categoryData, currency]);
-  
-  // Get mini bars for category breakdown
-  const getMiniBars = (data: typeof categoryAverages, maxItems = 5) => {
-    if (data.length === 0) return null;
-    
-    const topItems = data.slice(0, maxItems);
-    const maxValue = Math.max(...topItems.map(item => item.daily));
-    
-    return (
-      <div className="flex items-end h-8 mt-1 gap-1">
-        {topItems.map((item, index) => (
-          <div 
-            key={item.id} 
-            className="h-full flex flex-col justify-end"
-            style={{ width: `${100 / maxItems}%` }}
-          >
-            <div 
-              className="rounded-t w-full" 
-              style={{ 
-                height: getBarWidth(item.daily, maxValue),
-                backgroundColor: item.color || getCategoryColor(item.id, index)
-              }}
-            />
-          </div>
-        ))}
-      </div>
-    );
-  };
-  
-  // Get bar width for mini charts
-  const getBarWidth = (value: number, max: number) => {
-    return `${Math.max(1, (value / max) * 100)}%`;
-  };
+    return categoryData
+      .filter(cat => cat.percentage > 0)
+      .slice(0, 8)  // Limit to top 8 categories
+      .map(cat => ({
+        id: cat.categoryId,
+        value: cat.percentage,
+        color: cat.color || getCategoryColor(cat.categoryId, 0)
+      }));
+  }, [categoryData]);
   
   // Get category color (ensuring same colors as in charts)
   const getCategoryColor = (categoryId: string, index: number): string => {
@@ -222,8 +155,28 @@ export function ExpenseStats({
           </div>
         </div>
         
-        {/* Mini bar chart showing category breakdown */}
-        {getMiniBars(categoryAverages)}
+        {/* Stacked bar chart showing category breakdown */}
+        {stackedBarData.length > 0 && (
+          <div className="mt-4">
+            <StackedBar segments={stackedBarData} height={6} className="mb-2" />
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              {stackedBarData.slice(0, 4).map(segment => {
+                const category = categoryData.find(c => c.categoryId === segment.id);
+                return (
+                  <span key={segment.id} className="inline-flex items-center gap-1">
+                    <span 
+                      className="inline-block h-2 w-2 rounded-sm" 
+                      style={{ backgroundColor: segment.color }}
+                    />
+                    <span className="text-muted-foreground">
+                      {category?.categoryName || segment.id}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
         
         {spendingTrend.trend > 0 && (
           <div className="mt-3 flex items-center">

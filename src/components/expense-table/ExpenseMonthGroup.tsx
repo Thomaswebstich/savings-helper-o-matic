@@ -3,10 +3,10 @@ import { format } from 'date-fns';
 import { Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 import { Expense, Category, formatCurrency } from '@/lib/data';
 import { CategoryBadge } from '@/components/CategoryBadge';
-import { Progress } from '@/components/ui/progress';
 import { ExpenseTableRow } from './ExpenseTableRow';
 import { ExpenseTableHeader } from './ExpenseTableHeader';
 import { MonthGroup } from './types';
+import { StackedBar } from '@/components/ui/stacked-bar';
 import {
   Collapsible,
   CollapsibleContent,
@@ -58,6 +58,22 @@ export function ExpenseMonthGroup({
     return "Other";
   };
   
+  // Prepare data for stacked bar chart
+  const getStackedBarData = () => {
+    if (group.categoryTotals.size === 0) return [];
+    
+    return Array.from(group.categoryTotals.entries())
+      .sort((a, b) => b[1] - a[1]) // Sort by amount (highest first)
+      .map(([categoryId, amount]) => {
+        const percentage = (amount / group.total) * 100;
+        return {
+          id: categoryId,
+          value: percentage,
+          color: getCategoryColor(categoryId)
+        };
+      });
+  };
+  
   return (
     <Collapsible 
       open={isExpanded}
@@ -80,37 +96,36 @@ export function ExpenseMonthGroup({
             </div>
           </div>
           
-          {/* Category progress bars - only show when not expanded */}
+          {/* Category stacked bar - only show when not expanded */}
           {!isExpanded && group.categoryTotals.size > 0 && (
-            <div className="px-4 pb-2 pt-0.5 grid grid-cols-1 gap-1">
-              {Array.from(group.categoryTotals.entries())
-                .sort((a, b) => b[1] - a[1]) // Sort by amount (highest first)
-                .slice(0, 3) // Only show top 3 categories
-                .map(([categoryId, amount]) => {
-                  const percentage = (amount / group.total) * 100;
-                  const category = categoryMap.get(categoryId);
-                  const categoryColor = getCategoryColor(categoryId);
-                  
-                  return (
-                    <div key={categoryId} className="flex items-center gap-2">
-                      <div className="w-24 flex-shrink-0">
-                        <CategoryBadge 
-                          category={category || categoryId} 
-                          className="text-xs py-0 px-1.5 h-4"
+            <div className="px-4 pb-2 pt-1">
+              <StackedBar 
+                segments={getStackedBarData()} 
+                height={4}
+                className="mb-1"
+              />
+              <div className="flex flex-wrap gap-1 text-xs">
+                {getStackedBarData()
+                  .slice(0, 3) // Only show top 3 categories in the legend
+                  .map(segment => {
+                    const category = categoryMap.get(segment.id);
+                    return (
+                      <span 
+                        key={segment.id} 
+                        className="inline-flex items-center gap-1"
+                      >
+                        <span 
+                          className="inline-block h-2 w-2 rounded-sm" 
+                          style={{ backgroundColor: segment.color }}
                         />
-                      </div>
-                      <Progress
-                        value={percentage}
-                        className="h-1.5 flex-grow"
-                        indicatorColor={categoryColor}
-                      />
-                      <span className="text-xs text-muted-foreground w-12 text-right">
-                        {percentage.toFixed(0)}%
+                        <span className="text-muted-foreground">
+                          {category?.name || segment.id}
+                        </span>
                       </span>
-                    </div>
-                  );
-                })
-              }
+                    );
+                  })
+                }
+              </div>
             </div>
           )}
         </div>
