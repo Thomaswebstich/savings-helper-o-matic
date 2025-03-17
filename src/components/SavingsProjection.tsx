@@ -53,7 +53,11 @@ export function SavingsProjection({ monthlyData, currency = "THB" }: SavingsProj
   
   // Calculate key insights instead of annual projections
   const savingsInsights = useMemo(() => {
-    if (projectedSavings.length === 0) return [];
+    if (projectedSavings.length === 0) return {
+      avgMonthlySavings: 0,
+      yearlyTotal: 0,
+      milestones: [] as { amount: number; monthsToReach: number }[]
+    };
     
     const currentYear = new Date().getFullYear();
     
