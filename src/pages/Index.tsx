@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
@@ -215,8 +216,15 @@ export default function Index() {
       }
     }
     
+    // Ensure proper Date objects with timezone consideration
     const expenseDate = new Date(data.date);
-    const stopDate = data.stopDate ? new Date(data.stopDate) : undefined;
+    expenseDate.setHours(12, 0, 0, 0);
+    
+    let stopDate = undefined;
+    if (data.stopDate) {
+      stopDate = new Date(data.stopDate);
+      stopDate.setHours(12, 0, 0, 0);
+    }
     
     const newExpense: Expense = {
       id: crypto.randomUUID(),
@@ -231,17 +239,24 @@ export default function Index() {
     setExpenses(prev => [newExpense, ...prev]);
     
     try {
+      // Format dates for database
+      const formattedDate = expenseDate.toISOString().split('T')[0];
+      const formattedStopDate = stopDate ? stopDate.toISOString().split('T')[0] : null;
+      
+      console.log("Formatted date for DB:", formattedDate);
+      console.log("Formatted stop date for DB:", formattedStopDate);
+      
       const { data: dbData, error } = await supabase
         .from('expenses')
         .insert({
           description: newExpense.description,
           amount: newExpense.amount,
-          date: expenseDate.toISOString().split('T')[0],
+          date: formattedDate,
           category: categoryName,
           category_id: categoryId,
           is_recurring: newExpense.isRecurring,
           recurrence_interval: newExpense.recurrenceInterval,
-          stop_date: stopDate ? stopDate.toISOString().split('T')[0] : null,
+          stop_date: formattedStopDate,
           currency: newExpense.currency
         });
         
@@ -277,6 +292,12 @@ export default function Index() {
         : undefined
     };
     
+    // Set the time to noon to avoid timezone issues
+    preparedExpense.date.setHours(12, 0, 0, 0);
+    if (preparedExpense.stopDate) {
+      preparedExpense.stopDate.setHours(12, 0, 0, 0);
+    }
+    
     setCurrentExpense(preparedExpense);
     setIsFormOpen(true);
   };
@@ -293,8 +314,15 @@ export default function Index() {
       
       console.log("Updating expense with categoryId:", data.category, "and name:", categoryName);
       
+      // Ensure proper Date objects with timezone consideration
       const updatedDate = new Date(data.date);
-      const updatedStopDate = data.stopDate ? new Date(data.stopDate) : undefined;
+      updatedDate.setHours(12, 0, 0, 0);
+      
+      let updatedStopDate = undefined;
+      if (data.stopDate) {
+        updatedStopDate = new Date(data.stopDate);
+        updatedStopDate.setHours(12, 0, 0, 0);
+      }
       
       const updatedExpense: Expense = { 
         ...currentExpense, 
@@ -320,17 +348,24 @@ export default function Index() {
       );
       
       try {
+        // Format dates for database
+        const formattedDate = updatedDate.toISOString().split('T')[0];
+        const formattedStopDate = updatedStopDate ? updatedStopDate.toISOString().split('T')[0] : null;
+        
+        console.log("Formatted date for DB update:", formattedDate);
+        console.log("Formatted stop date for DB update:", formattedStopDate);
+        
         const { error } = await supabase
           .from('expenses')
           .update({
             description: data.description,
             amount: data.amount,
-            date: updatedDate.toISOString().split('T')[0],
+            date: formattedDate,
             category: categoryName,
             category_id: data.category,
             is_recurring: data.isRecurring,
             recurrence_interval: data.recurrenceInterval,
-            stop_date: updatedStopDate ? updatedStopDate.toISOString().split('T')[0] : null,
+            stop_date: formattedStopDate,
             currency: data.currency
           })
           .eq('id', currentExpense.id);

@@ -56,6 +56,16 @@ function Calendar({
         IconLeft: () => <ChevronLeft className="h-4 w-4" />,
         IconRight: () => <ChevronRight className="h-4 w-4" />,
       }}
+      onDayClick={(day) => {
+        // Set the time to noon to avoid timezone issues
+        const adjustedDate = new Date(day);
+        adjustedDate.setHours(12, 0, 0, 0);
+        
+        // If there's an onSelect handler in props, call it with the adjusted date
+        if (props.onSelect) {
+          props.onSelect(adjustedDate);
+        }
+      }}
       {...props}
     />
   );

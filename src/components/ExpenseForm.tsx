@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -57,12 +58,15 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
     if (initialValues) {
       console.log("Setting form values with:", initialValues);
       
-      // Ensure all dates are proper Date objects
+      // Ensure all dates are proper Date objects and adjust for timezone
       const expenseDate = new Date(initialValues.date);
+      // Set to noon to avoid timezone issues
+      expenseDate.setHours(12, 0, 0, 0);
       
       let stopDate = undefined;
       if (initialValues.stopDate) {
         stopDate = new Date(initialValues.stopDate);
+        stopDate.setHours(12, 0, 0, 0);
       }
       
       console.log("Prepared date:", expenseDate);
@@ -97,11 +101,20 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
   const handleSubmit = (values: ExpenseFormValues) => {
     console.log("Form submitting with values:", values);
     
-    // Ensure dates are properly formatted
+    // Ensure dates are properly formatted with fixed time
+    const submissionDate = new Date(values.date);
+    submissionDate.setHours(12, 0, 0, 0);
+    
+    let submissionStopDate = undefined;
+    if (values.stopDate) {
+      submissionStopDate = new Date(values.stopDate);
+      submissionStopDate.setHours(12, 0, 0, 0);
+    }
+    
     const submissionValues: ExpenseFormValues = {
       ...values,
-      date: new Date(values.date),
-      stopDate: values.stopDate ? new Date(values.stopDate) : undefined
+      date: submissionDate,
+      stopDate: submissionStopDate
     };
     
     console.log("Formatted submission values:", submissionValues);
@@ -217,8 +230,13 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                           mode="single"
                           selected={field.value ? new Date(field.value) : undefined}
                           onSelect={(date) => {
-                            console.log("Calendar date selected:", date);
-                            field.onChange(date);
+                            if (date) {
+                              // Create a new date with noon time to avoid timezone issues
+                              const adjustedDate = new Date(date);
+                              adjustedDate.setHours(12, 0, 0, 0);
+                              console.log("Calendar date selected:", adjustedDate);
+                              field.onChange(adjustedDate);
+                            }
                           }}
                           initialFocus
                           captionLayout="dropdown-buttons"
@@ -358,10 +376,18 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                             mode="single"
                             selected={field.value ? new Date(field.value) : undefined}
                             onSelect={(date) => {
-                              console.log("Stop date selected:", date);
-                              field.onChange(date);
+                              if (date) {
+                                // Create a new date with noon time to avoid timezone issues
+                                const adjustedDate = new Date(date);
+                                adjustedDate.setHours(12, 0, 0, 0);
+                                console.log("Stop date selected:", adjustedDate);
+                                field.onChange(adjustedDate);
+                              }
                             }}
-                            disabled={(date) => date < form.getValues('date')}
+                            disabled={(date) => {
+                              const currentDate = form.getValues('date');
+                              return date < (currentDate ? new Date(currentDate) : new Date());
+                            }}
                             initialFocus
                             captionLayout="dropdown-buttons"
                             fromYear={2020}
