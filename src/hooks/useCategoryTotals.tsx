@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { Expense, Category, CategoryBudget, calculateCategoryTotals } from '@/lib/data';
+import { Expense, Category, CategoryBudget } from '@/lib/types';
+import { calculateCategoryTotals } from '@/lib/category/calculation';
 
 export function useCategoryTotals(
   expenses: Expense[],
