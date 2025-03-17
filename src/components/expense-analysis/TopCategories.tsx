@@ -38,17 +38,32 @@ export function TopCategories({
     // Group by category and sum
     filteredExpenses.forEach(expense => {
       const categoryId = expense.categoryId || 'uncategorized';
-      const categoryName = expense.category || 'Uncategorized';
+      let categoryName = 'Uncategorized';
+      let color: string | undefined;
+      
+      // Extract information from category object if available
+      if (typeof expense.category === 'object' && expense.category) {
+        categoryName = expense.category.name || 'Uncategorized';
+        // Explicitly check for color property in the category object
+        if ('color' in expense.category && typeof expense.category.color === 'string') {
+          color = expense.category.color;
+        }
+      } else if (typeof expense.category === 'string') {
+        categoryName = expense.category;
+      }
+      
+      // Try to get color from categoryData if not available from expense
+      if (!color) {
+        const categoryInfo = categoryData.find(c => c.categoryId === categoryId);
+        color = categoryInfo?.color;
+      }
       
       if (!categoryMap.has(categoryId)) {
-        // Find color from categoryData
-        const categoryInfo = categoryData.find(c => c.categoryId === categoryId);
-        
         categoryMap.set(categoryId, {
           id: categoryId,
           name: categoryName,
           total: 0,
-          color: categoryInfo?.color
+          color: color
         });
       }
       
@@ -69,7 +84,7 @@ export function TopCategories({
       .sort((a, b) => b.total - a.total);
   }, [filteredExpenses, categoryData, currency]);
   
-  // Get category color
+  // Get category color with fallbacks
   const getCategoryColor = (categoryId: string, index: number): string => {
     const colors = [
       "#0ea5e9", // blue
@@ -80,18 +95,16 @@ export function TopCategories({
       "#94a3b8"  // slate
     ];
     
-    // Try to find color in categoryData first
-    const categoryInfo = categoryData.find(c => c.categoryId === categoryId);
+    // First try to find color in categoryData (from the categoryTotals we calculated)
+    const categoryInfo = categoryTotals.find(c => c.id === categoryId);
     if (categoryInfo?.color) return categoryInfo.color;
     
+    // Then try in the provided categoryData
+    const providedCategoryInfo = categoryData.find(c => c.categoryId === categoryId);
+    if (providedCategoryInfo?.color) return providedCategoryInfo.color;
+    
     // Use index or hash the category ID for consistent color
-    if (index !== undefined) return colors[index % colors.length];
-    
-    const hash = categoryId.split('').reduce((acc, char) => {
-      return char.charCodeAt(0) + ((acc << 5) - acc);
-    }, 0);
-    
-    return colors[Math.abs(hash) % colors.length];
+    return colors[index % colors.length];
   };
   
   return (
@@ -112,7 +125,7 @@ export function TopCategories({
             <Progress 
               value={category.percentage} 
               className="h-1.5"
-              indicatorColor={getCategoryColor(category.id, index)}
+              indicatorColor={category.color || getCategoryColor(category.id, index)}
             />
           </div>
         ))}

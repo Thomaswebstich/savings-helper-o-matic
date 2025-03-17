@@ -39,11 +39,18 @@ export function calculateCategoryBreakdown(
   // Group by category
   filteredExpenses.forEach(expense => {
     const categoryId = expense.categoryId || 'uncategorized';
-    const categoryName = expense.category || 'Uncategorized';
-    // Extract the color from the category field if it has a color property
-    let color;
-    if (typeof expense.category === 'object' && expense.category && 'color' in expense.category) {
-      color = (expense.category as any).color;
+    let categoryName = 'Uncategorized';
+    let color: string | undefined;
+    
+    // Extract information from category object if available
+    if (typeof expense.category === 'object' && expense.category) {
+      categoryName = expense.category.name || 'Uncategorized';
+      // Explicitly check for color property in the category object
+      if ('color' in expense.category && typeof expense.category.color === 'string') {
+        color = expense.category.color;
+      }
+    } else if (typeof expense.category === 'string') {
+      categoryName = expense.category;
     }
     
     if (!categoryMap.has(categoryId)) {
@@ -99,6 +106,7 @@ export function calculateCategoryBreakdown(
 
 // Get category color (ensuring same colors as in charts)
 export function getCategoryColor(categoryId: string, index: number, categories: CategoryInfo[]): string {
+  // Default color palette
   const colors = [
     "#0ea5e9", // blue
     "#10b981", // green
@@ -108,13 +116,14 @@ export function getCategoryColor(categoryId: string, index: number, categories: 
     "#94a3b8"  // slate
   ];
   
-  // Check if this category already has a color in our data
+  // First priority: Check if this category already has a color in our data
   const categoryInfo = categories.find(c => c.id === categoryId);
   if (categoryInfo?.color) return categoryInfo.color;
   
-  // Use index or hash the category ID for consistent color
+  // Second priority: Use index-based color for consistent coloring within a component
   if (index !== undefined) return colors[index % colors.length];
   
+  // Fallback: Hash the category ID for consistent coloring across components
   const hash = categoryId.split('').reduce((acc, char) => {
     return char.charCodeAt(0) + ((acc << 5) - acc);
   }, 0);

@@ -70,12 +70,9 @@ export function ExpenseMonthGroup({
         // Calculate percentage based on the total amount for this month
         const percentage = totalAmount > 0 ? (amount / totalAmount) * 100 : 0;
         
-        // Get the category color from the categoryMap if available
-        let color = getCategoryColor(categoryId);
+        // Get the category color from the categoryMap first (prioritize taxonomy color)
         const category = categoryMap.get(categoryId);
-        if (category && category.color) {
-          color = category.color;
-        }
+        const color = category?.color || getCategoryColor(categoryId);
         
         return {
           id: categoryId,
