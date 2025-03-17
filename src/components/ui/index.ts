@@ -2,4 +2,5 @@
 export * from "./stacked-bar";
 export * from "./progress";
 export * from "./tabs";
-export * from "./chart";
+export * from "./chart/index";
+
