@@ -1,9 +1,9 @@
 
 import { useMemo } from 'react';
 import { TabsContent } from "@/components/ui/tabs";
-import { Expense, formatCurrency, Currency, convertCurrency } from '@/lib/data';
-import { StackedBar } from '@/components/ui/stacked-bar';
-import { startOfDay, endOfDay, differenceInDays, differenceInWeeks, differenceInMonths } from 'date-fns';
+import { Expense, Currency } from '@/lib/data';
+import { calculateCategoryBreakdown } from './utils/category-breakdown-utils';
+import { CategoryPeriodBreakdown } from './components/CategoryPeriodBreakdown';
 
 interface CategoryCostBreakdownProps {
   filteredExpenses: Expense[];
@@ -16,203 +16,41 @@ export function CategoryCostBreakdown({
 }: CategoryCostBreakdownProps) {
   
   // Calculate category data
-  const { categoryData, totalAmount, timePeriodStats } = useMemo(() => {
-    if (filteredExpenses.length === 0) {
-      return { 
-        categoryData: [], 
-        totalAmount: 0,
-        timePeriodStats: { days: 1, weeks: 0.143, months: 0.033 }
-      };
-    }
-    
-    const categoryMap = new Map<string, {
-      id: string,
-      name: string,
-      total: number,
-      count: number,
-      color?: string
-    }>();
-    
-    // Group by category
-    filteredExpenses.forEach(expense => {
-      const categoryId = expense.categoryId || 'uncategorized';
-      const categoryName = expense.category || 'Uncategorized';
-      // Extract the color from the category field if it has a color property
-      let color;
-      if (typeof expense.category === 'object' && expense.category && 'color' in expense.category) {
-        color = (expense.category as any).color;
-      }
-      
-      if (!categoryMap.has(categoryId)) {
-        categoryMap.set(categoryId, {
-          id: categoryId,
-          name: categoryName,
-          total: 0,
-          count: 0,
-          color
-        });
-      }
-      
-      const entry = categoryMap.get(categoryId)!;
-      entry.total += convertCurrency(expense.amount, expense.currency || "THB", currency);
-      entry.count += 1;
-    });
-    
-    // Find date range
-    const dates = filteredExpenses.map(e => e.date instanceof Date ? e.date : new Date(e.date));
-    const minDate = startOfDay(new Date(Math.min(...dates.map(d => d.getTime()))));
-    const maxDate = endOfDay(new Date(Math.max(...dates.map(d => d.getTime()))));
-    
-    // Calculate period differences for accurate averages
-    const daysDiff = Math.max(1, differenceInDays(maxDate, minDate) + 1); // +1 to include both start and end days
-    const weeksDiff = Math.max(0.143, differenceInWeeks(maxDate, minDate) + 0.143); // +0.143 (1/7) to avoid division by zero
-    const monthsDiff = Math.max(0.033, differenceInMonths(maxDate, minDate) + 0.033); // +0.033 (1/30) to avoid division by zero
-    
-    // Calculate total for percentages
-    const totalSpending = filteredExpenses.reduce((sum, expense) => 
-      sum + convertCurrency(expense.amount, expense.currency || "THB", currency), 0);
-    
-    // Calculate time period stats for correct averages
-    const timePeriodStats = {
-      days: daysDiff,
-      weeks: weeksDiff,
-      months: monthsDiff
-    };
-    
-    // Sort by amount
-    const categoryData = Array.from(categoryMap.values())
-      .map(category => ({
-        ...category,
-        percentage: (category.total / totalSpending) * 100
-      }))
-      .sort((a, b) => b.total - a.total);
-      
-    return { 
-      categoryData, 
-      totalAmount: totalSpending,
-      timePeriodStats
-    };
-      
-  }, [filteredExpenses, currency]);
-  
-  // Get category color (ensuring same colors as in charts)
-  const getCategoryColor = (categoryId: string, index: number): string => {
-    const colors = [
-      "#0ea5e9", // blue
-      "#10b981", // green
-      "#f59e0b", // amber
-      "#8b5cf6", // purple
-      "#ec4899", // pink
-      "#94a3b8"  // slate
-    ];
-    
-    // Check if this category already has a color in our data
-    const categoryInfo = categoryData.find(c => c.id === categoryId);
-    if (categoryInfo?.color) return categoryInfo.color;
-    
-    // Use index or hash the category ID for consistent color
-    if (index !== undefined) return colors[index % colors.length];
-    
-    const hash = categoryId.split('').reduce((acc, char) => {
-      return char.charCodeAt(0) + ((acc << 5) - acc);
-    }, 0);
-    
-    return colors[Math.abs(hash) % colors.length];
-  };
-
-  // Create stacked bar data
-  const getStackedBarData = () => {
-    return categoryData.map((category, index) => ({
-      id: category.id,
-      value: category.percentage,
-      color: category.color || getCategoryColor(category.id, index)
-    }));
-  };
-  
-  // Render category data for each time period
-  const renderCategories = (period: 'daily' | 'weekly' | 'monthly') => {
-    if (categoryData.length === 0) {
-      return (
-        <div className="text-center text-muted-foreground py-4">
-          No expense data available
-        </div>
-      );
-    }
-    
-    const divisor = period === 'daily' 
-      ? timePeriodStats.days 
-      : period === 'weekly' 
-        ? timePeriodStats.weeks 
-        : timePeriodStats.months;
-    
-    return (
-      <>
-        {/* Stacked bar for overall breakdown */}
-        <div className="mb-4 mt-2">
-          <StackedBar segments={getStackedBarData()} height={8} className="mb-2" />
-          <div className="flex flex-wrap gap-2 text-xs">
-            {categoryData.slice(0, 5).map((category, idx) => (
-              <span key={category.id} className="inline-flex items-center gap-1">
-                <span 
-                  className="inline-block h-2 w-2 rounded-sm" 
-                  style={{ backgroundColor: category.color || getCategoryColor(category.id, idx) }}
-                />
-                <span>{category.name}</span>
-                <span className="text-muted-foreground">
-                  {category.percentage.toFixed(1)}%
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-          {categoryData.map((category, index) => {
-            // Calculate average for the time period
-            const avgAmount = category.total / divisor;
-            
-            return (
-              <div 
-                key={category.id} 
-                className="flex items-center justify-between p-2 rounded-lg bg-muted/40"
-              >
-                <div className="flex items-center">
-                  <div 
-                    className="w-2 h-8 rounded-sm mr-2" 
-                    style={{ backgroundColor: category.color || getCategoryColor(category.id, index) }} 
-                  />
-                  <div>
-                    <div className="text-sm font-medium truncate max-w-[120px]">{category.name}</div>
-                    <div className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}% of total</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-medium">{formatCurrency(avgAmount, currency)}</div>
-                  <div className="text-xs text-muted-foreground">per {period.slice(0, -2)}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </>
-    );
-  };
+  const { categoryData, totalAmount, timePeriodStats } = useMemo(() => 
+    calculateCategoryBreakdown(filteredExpenses, currency), 
+    [filteredExpenses, currency]
+  );
   
   return (
     <>
       <TabsContent value="daily" className="mt-3">
         <div className="text-sm font-medium mb-2">Daily Cost by Category</div>
-        {renderCategories('daily')}
+        <CategoryPeriodBreakdown 
+          categoryData={categoryData}
+          divisor={timePeriodStats.days}
+          period="daily"
+          currency={currency}
+        />
       </TabsContent>
       
       <TabsContent value="weekly" className="mt-3">
         <div className="text-sm font-medium mb-2">Weekly Cost by Category</div>
-        {renderCategories('weekly')}
+        <CategoryPeriodBreakdown 
+          categoryData={categoryData}
+          divisor={timePeriodStats.weeks}
+          period="weekly"
+          currency={currency}
+        />
       </TabsContent>
       
       <TabsContent value="monthly" className="mt-3">
         <div className="text-sm font-medium mb-2">Monthly Cost by Category</div>
-        {renderCategories('monthly')}
+        <CategoryPeriodBreakdown 
+          categoryData={categoryData}
+          divisor={timePeriodStats.months}
+          period="monthly"
+          currency={currency}
+        />
       </TabsContent>
     </>
   );
