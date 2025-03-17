@@ -4,8 +4,34 @@ import { Expense, Category, formatCurrency } from '@/lib/data';
 import { CategoryBadge } from './CategoryBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { format, isAfter, isBefore, isSameMonth, startOfMonth, endOfMonth, parseISO } from 'date-fns';
-import { Calendar, Filter, SortDesc, SortAsc, Plus, CheckSquare, X, Search, Trash2, Pencil, ChevronRight, ChevronDown } from 'lucide-react';
+import { 
+  format, 
+  isAfter, 
+  isBefore, 
+  isSameMonth, 
+  startOfMonth, 
+  endOfMonth, 
+  parseISO, 
+  addMonths, 
+  addDays, 
+  addWeeks,
+  isSameDay 
+} from 'date-fns';
+import { 
+  Calendar, 
+  Filter, 
+  SortDesc, 
+  SortAsc, 
+  Plus, 
+  CheckSquare, 
+  X, 
+  Search, 
+  Trash2, 
+  Pencil, 
+  ChevronRight, 
+  ChevronDown,
+  RefreshCw 
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +50,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell
+} from "@/components/ui/table";
 
 interface ExpenseTableProps {
   expenses: Expense[];
@@ -48,6 +82,7 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
     key: 'date', direction: 'desc' 
   });
   const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
+  const [showProjections, setShowProjections] = useState(true);
   
   // Create a category map for easier lookups
   const categoryMap = useMemo(() => {
@@ -58,9 +93,127 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
     return map;
   }, [categories]);
   
+  // Generate projected recurring expenses for the next 12 months
+  const projectedRecurringExpenses = useMemo(() => {
+    if (!showProjections) return [];
+    
+    const recurringExpenses = expenses.filter(expense => expense.isRecurring);
+    const projections: Expense[] = [];
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    
+    // Project for 12 months forward
+    const maxProjectionDate = addMonths(today, 12);
+    
+    recurringExpenses.forEach(expense => {
+      const startDate = new Date(expense.date);
+      startDate.setHours(12, 0, 0, 0);
+      
+      // Don't project if the start date is in the future
+      if (isBefore(today, startDate)) {
+        return;
+      }
+      
+      // Define the end date for projections
+      const endDate = expense.stopDate 
+        ? new Date(expense.stopDate) 
+        : maxProjectionDate;
+        
+      if (isBefore(endDate, today)) {
+        return; // Already ended
+      }
+      
+      // Create projections based on recurrence interval
+      let currentDate = new Date(startDate);
+      
+      // Skip all occurrences before today
+      while (isBefore(currentDate, today) && !isSameDay(currentDate, today)) {
+        switch (expense.recurrenceInterval) {
+          case 'daily':
+            currentDate = addDays(currentDate, 1);
+            break;
+          case 'weekly':
+            currentDate = addWeeks(currentDate, 1);
+            break;
+          case 'monthly':
+            currentDate = addMonths(currentDate, 1);
+            break;
+          case 'yearly':
+            currentDate = addMonths(currentDate, 12);
+            break;
+          default:
+            currentDate = addMonths(currentDate, 1); // Default to monthly
+        }
+      }
+      
+      // Skip the actual expense's date to avoid duplication
+      if (isSameDay(currentDate, startDate)) {
+        switch (expense.recurrenceInterval) {
+          case 'daily':
+            currentDate = addDays(currentDate, 1);
+            break;
+          case 'weekly':
+            currentDate = addWeeks(currentDate, 1);
+            break;
+          case 'monthly':
+            currentDate = addMonths(currentDate, 1);
+            break;
+          case 'yearly':
+            currentDate = addMonths(currentDate, 12);
+            break;
+          default:
+            currentDate = addMonths(currentDate, 1);
+        }
+      }
+      
+      // Generate future projections
+      while (isBefore(currentDate, endDate) || isSameDay(currentDate, endDate)) {
+        // Create projected expense
+        const projectedExpense: Expense = {
+          ...expense,
+          id: `${expense.id}-projection-${format(currentDate, 'yyyy-MM-dd')}`,
+          date: new Date(currentDate),
+          isProjection: true // Add this flag to identify projections
+        };
+        
+        projections.push(projectedExpense);
+        
+        // Move to next occurrence
+        switch (expense.recurrenceInterval) {
+          case 'daily':
+            currentDate = addDays(currentDate, 1);
+            break;
+          case 'weekly':
+            currentDate = addWeeks(currentDate, 1);
+            break;
+          case 'monthly':
+            currentDate = addMonths(currentDate, 1);
+            break;
+          case 'yearly':
+            currentDate = addMonths(currentDate, 12);
+            break;
+          default:
+            currentDate = addMonths(currentDate, 1);
+        }
+        
+        // Safety check to prevent infinite loops
+        if (isSameDay(currentDate, projectedExpense.date)) {
+          break;
+        }
+      }
+    });
+    
+    return projections;
+  }, [expenses, showProjections]);
+  
+  // Combine actual expenses with projections
+  const allExpenses = useMemo(() => {
+    return [...expenses, ...projectedRecurringExpenses];
+  }, [expenses, projectedRecurringExpenses]);
+  
   // Filter expenses based on search and category filters
   const filteredExpenses = useMemo(() => {
-    return expenses.filter(expense => {
+    return allExpenses.filter(expense => {
       // Filter by search term
       const matchesSearch = 
         expense.description.toLowerCase().includes(search.toLowerCase()) ||
@@ -72,7 +225,7 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
       
       return matchesSearch && matchesCategory;
     });
-  }, [expenses, search, selectedCategories]);
+  }, [allExpenses, search, selectedCategories]);
   
   // Group expenses by month
   const monthGroups = useMemo(() => {
@@ -212,6 +365,11 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
     return "Other";
   };
 
+  // Toggle projections visibility
+  const toggleProjections = () => {
+    setShowProjections(prev => !prev);
+  };
+
   return (
     <div className="overflow-hidden rounded-xl border border-border animate-fade-in">
       <div className="bg-muted/50 px-4 py-3 flex flex-col md:flex-row gap-3 justify-between items-start md:items-center">
@@ -226,6 +384,16 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-9"
+            onClick={toggleProjections}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${showProjections ? 'text-primary' : 'text-muted-foreground'}`} />
+            {showProjections ? 'Hide Projections' : 'Show Projections'}
+          </Button>
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-9">
@@ -307,129 +475,136 @@ export function ExpenseTable({ expenses, categories, onAddExpense, onEditExpense
                   </CollapsibleTrigger>
                   
                   <CollapsibleContent>
-                    <table className="w-full">
-                      <thead>
-                        <tr className="notion-db-header">
-                          <th 
-                            className="font-medium text-left w-2/5 cursor-pointer"
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="notion-db-header">
+                          <TableHead 
+                            className="font-medium w-2/5 cursor-pointer"
                             onClick={() => requestSort('description')}
                           >
                             <div className="flex items-center">
                               Description {getSortIcon('description')}
                             </div>
-                          </th>
-                          <th 
-                            className="font-medium text-left w-1/5 cursor-pointer"
+                          </TableHead>
+                          <TableHead 
+                            className="font-medium w-1/5 cursor-pointer"
                             onClick={() => requestSort('amount')}
                           >
                             <div className="flex items-center">
                               Amount {getSortIcon('amount')}
                             </div>
-                          </th>
-                          <th 
-                            className="font-medium text-left w-1/5 cursor-pointer"
+                          </TableHead>
+                          <TableHead 
+                            className="font-medium w-1/5 cursor-pointer"
                             onClick={() => requestSort('date')}
                           >
                             <div className="flex items-center">
                               <Calendar className="w-4 h-4 mr-1" />
                               Date {getSortIcon('date')}
                             </div>
-                          </th>
-                          <th 
-                            className="font-medium text-left w-1/5 cursor-pointer"
+                          </TableHead>
+                          <TableHead 
+                            className="font-medium w-1/5 cursor-pointer"
                             onClick={() => requestSort('category')}
                           >
                             <div className="flex items-center">
                               Category {getSortIcon('category')}
                             </div>
-                          </th>
-                          <th className="font-medium text-left w-12">
+                          </TableHead>
+                          <TableHead className="font-medium w-12">
                             <div className="flex items-center">
                               <CheckSquare className="w-4 h-4" />
                             </div>
-                          </th>
-                          <th className="font-medium text-right w-20">
+                          </TableHead>
+                          <TableHead className="font-medium text-right w-20">
                             Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {group.expenses.map(expense => (
                           <ContextMenu key={expense.id}>
                             <ContextMenuTrigger asChild>
-                              <tr className="notion-db-row group">
-                                <td className="font-medium">{expense.description}</td>
-                                <td className="text-muted-foreground">{formatCurrency(expense.amount)}</td>
-                                <td className="text-muted-foreground">
+                              <TableRow className={`notion-db-row group ${expense.isProjection ? 'bg-muted/30' : ''}`}>
+                                <TableCell className={`font-medium ${expense.isProjection ? 'text-muted-foreground italic' : ''}`}>
+                                  {expense.description}
+                                  {expense.isProjection && <span className="ml-2 text-xs text-muted-foreground">(Projected)</span>}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">{formatCurrency(expense.amount)}</TableCell>
+                                <TableCell className="text-muted-foreground">
                                   {expense.date instanceof Date
                                     ? format(expense.date, 'MMM d, yyyy')
                                     : format(new Date(expense.date), 'MMM d, yyyy')}
-                                </td>
-                                <td>
+                                </TableCell>
+                                <TableCell>
                                   <CategoryBadge category={getCategory(expense)} />
-                                </td>
-                                <td>
+                                </TableCell>
+                                <TableCell>
                                   {expense.isRecurring && (
                                     <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                                       ↻
                                     </span>
                                   )}
-                                </td>
-                                <td className="text-right">
-                                  <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {onEditExpense && (
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-8 w-8" 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onEditExpense(expense);
-                                        }}
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                        <span className="sr-only">Edit</span>
-                                      </Button>
-                                    )}
-                                    {onDeleteExpense && (
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-8 w-8 text-destructive" 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onDeleteExpense(expense.id);
-                                        }}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                        <span className="sr-only">Delete</span>
-                                      </Button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {!expense.isProjection && (
+                                    <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      {onEditExpense && (
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="h-8 w-8" 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onEditExpense(expense);
+                                          }}
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                          <span className="sr-only">Edit</span>
+                                        </Button>
+                                      )}
+                                      {onDeleteExpense && (
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="h-8 w-8 text-destructive" 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDeleteExpense(expense.id);
+                                          }}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                          <span className="sr-only">Delete</span>
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
+                                </TableCell>
+                              </TableRow>
                             </ContextMenuTrigger>
-                            <ContextMenuContent>
-                              {onEditExpense && (
-                                <ContextMenuItem onClick={() => onEditExpense(expense)}>
-                                  <Pencil className="h-4 w-4 mr-2" />
-                                  Edit expense
-                                </ContextMenuItem>
-                              )}
-                              {onDeleteExpense && (
-                                <ContextMenuItem 
-                                  onClick={() => onDeleteExpense(expense.id)}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete expense
-                                </ContextMenuItem>
-                              )}
-                            </ContextMenuContent>
+                            {!expense.isProjection && (
+                              <ContextMenuContent>
+                                {onEditExpense && (
+                                  <ContextMenuItem onClick={() => onEditExpense(expense)}>
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Edit expense
+                                  </ContextMenuItem>
+                                )}
+                                {onDeleteExpense && (
+                                  <ContextMenuItem 
+                                    onClick={() => onDeleteExpense(expense.id)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete expense
+                                  </ContextMenuItem>
+                                )}
+                              </ContextMenuContent>
+                            )}
                           </ContextMenu>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </CollapsibleContent>
                 </Collapsible>
               );
