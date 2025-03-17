@@ -58,33 +58,32 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
     if (initialValues) {
       console.log("Setting form values with:", initialValues);
       
-      // Ensure all dates are Date objects
-      const expenseDate = new Date(initialValues.date);
+      // Ensure all dates are proper Date objects (not serialized objects)
+      const expenseDate = initialValues.date instanceof Date 
+        ? initialValues.date 
+        : new Date(initialValues.date);
+      
       let stopDate = undefined;
-      
       if (initialValues.stopDate) {
-        stopDate = new Date(initialValues.stopDate);
+        stopDate = initialValues.stopDate instanceof Date 
+          ? initialValues.stopDate 
+          : new Date(initialValues.stopDate);
       }
       
-      // Use categoryId if available, otherwise use category name
-      let categoryValue = initialValues.categoryId;
-      if (!categoryValue && initialValues.category) {
-        // Try to find the category ID by name
-        const foundCategory = categories.find(c => c.name === initialValues.category);
-        if (foundCategory) {
-          categoryValue = foundCategory.id;
-        }
-      }
+      // Use categoryId directly if available
+      let categoryValue = initialValues.categoryId || '';
       
-      console.log("Resetting form with category value:", categoryValue);
+      console.log("Prepared date:", expenseDate);
+      console.log("Prepared stop date:", stopDate);
+      console.log("Using category value:", categoryValue);
       
       // Reset the form with prepared values
       form.reset({
         description: initialValues.description,
         amount: initialValues.amount,
         date: expenseDate,
-        category: categoryValue || '',
-        isRecurring: initialValues.isRecurring,
+        category: categoryValue,
+        isRecurring: initialValues.isRecurring || false,
         recurrenceInterval: initialValues.recurrenceInterval,
         stopDate: stopDate,
         currency: initialValues.currency || 'THB'
@@ -218,6 +217,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                           selected={field.value}
                           onSelect={field.onChange}
                           initialFocus
+                          className="pointer-events-auto"
                         />
                       </PopoverContent>
                     </Popover>
@@ -355,6 +355,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
                             onSelect={field.onChange}
                             disabled={(date) => date < form.getValues('date')}
                             initialFocus
+                            className="pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>

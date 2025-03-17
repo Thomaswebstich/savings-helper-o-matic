@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
@@ -45,20 +44,16 @@ export default function Index() {
     async function fetchData() {
       setIsLoading(true);
       try {
-        // Fetch categories first
         const categoriesData = await fetchCategories();
         setCategories(categoriesData);
         
-        // Fetch current month budgets
         const currentMonth = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
         const budgetsData = await fetchCategoryBudgets(currentMonth);
         setBudgets(budgetsData);
         
-        // Fetch income sources
         const incomeData = await fetchIncomeSources();
         setIncomeSources(incomeData);
         
-        // Fetch expenses
         const { data: expensesData, error } = await supabase
           .from('expenses')
           .select('*')
@@ -74,8 +69,8 @@ export default function Index() {
             description: item.description,
             amount: Number(item.amount),
             date: new Date(item.date),
-            categoryId: item.category_id || '', // Use the new categoryId field
-            category: item.category, // Keep for backward compatibility
+            categoryId: item.category_id || '',
+            category: item.category,
             isRecurring: item.is_recurring || false,
             recurrenceInterval: item.recurrence_interval as any,
             stopDate: item.stop_date ? new Date(item.stop_date) : undefined,
@@ -255,7 +250,6 @@ export default function Index() {
   const handleEditExpense = (expense: Expense) => {
     console.log("Editing expense:", expense);
     
-    // Make sure all data is converted to proper types before setting currentExpense
     const preparedExpense: Expense = {
       ...expense,
       date: expense.date instanceof Date ? expense.date : new Date(expense.date),
@@ -272,40 +266,33 @@ export default function Index() {
     console.log("Form submitted with data:", data);
     
     if (currentExpense) {
-      // For editing an existing expense
-      let categoryId = data.category;
       let categoryName = '';
-      
-      // Find the category name if we have a valid category ID
-      const foundCategory = categories.find(c => c.id === categoryId);
+      const foundCategory = categories.find(c => c.id === data.category);
       if (foundCategory) {
         categoryName = foundCategory.name;
-      } 
-      // If we don't have a matching category ID, maybe it's a name - try to find the ID
-      else if (categoryId) {
-        const categoryByName = categories.find(c => c.name === categoryId);
-        if (categoryByName) {
-          categoryId = categoryByName.id;
-          categoryName = categoryByName.name;
-        }
       }
       
-      console.log("Updating expense with categoryId:", categoryId, "and name:", categoryName);
+      console.log("Updating expense with categoryId:", data.category, "and name:", categoryName);
+      
+      const updatedDate = data.date instanceof Date ? data.date : new Date(data.date);
+      const updatedStopDate = data.stopDate instanceof Date ? data.stopDate : 
+        (data.stopDate ? new Date(data.stopDate) : undefined);
       
       const updatedExpense: Expense = { 
         ...currentExpense, 
         description: data.description,
         amount: data.amount,
-        date: data.date,
-        categoryId: categoryId,
+        date: updatedDate,
+        categoryId: data.category,
         category: categoryName,
         isRecurring: data.isRecurring,
         recurrenceInterval: data.recurrenceInterval,
-        stopDate: data.stopDate,
+        stopDate: updatedStopDate,
         currency: data.currency
       };
       
-      // Update the local state first
+      console.log("Final updated expense object:", updatedExpense);
+      
       setExpenses(prev => 
         prev.map(exp => 
           exp.id === currentExpense.id 
@@ -315,18 +302,17 @@ export default function Index() {
       );
       
       try {
-        // Format the data for Supabase
         const { error } = await supabase
           .from('expenses')
           .update({
             description: data.description,
             amount: data.amount,
-            date: data.date.toISOString().split('T')[0],
+            date: updatedDate.toISOString().split('T')[0],
             category: categoryName,
-            category_id: categoryId,
+            category_id: data.category,
             is_recurring: data.isRecurring,
             recurrence_interval: data.recurrenceInterval,
-            stop_date: data.stopDate ? data.stopDate.toISOString().split('T')[0] : null,
+            stop_date: updatedStopDate ? updatedStopDate.toISOString().split('T')[0] : null,
             currency: data.currency
           })
           .eq('id', currentExpense.id);
@@ -346,10 +332,8 @@ export default function Index() {
         });
       }
       
-      // Clear the current expense after update
       setCurrentExpense(null);
     } else {
-      // For adding a new expense
       handleAddExpense(data);
     }
   };
