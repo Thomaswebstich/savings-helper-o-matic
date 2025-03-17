@@ -16,7 +16,7 @@ import {
   YAxis
 } from 'recharts';
 import { CategoryBadge } from './CategoryBadge';
-import { ChartLegendContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import {
   Tabs,
   TabsContent,
@@ -148,6 +148,30 @@ export function FinancialCharts({
   
   const hasFutureData = monthlyData.length > 0 && new Date().getMonth() !== new Date(visibleData[visibleData.length - 1].month).getMonth();
 
+  const chartConfig = {
+    income: {
+      label: "Income",
+      theme: {
+        light: "#0ea5e9",
+        dark: "#0ea5e9"
+      }
+    },
+    expenses: {
+      label: "Expenses",
+      theme: {
+        light: "#f43f5e",
+        dark: "#f43f5e"
+      }
+    },
+    savings: {
+      label: "Savings",
+      theme: {
+        light: "#10b981",
+        dark: "#10b981"
+      }
+    }
+  };
+
   return (
     <div className="glass-card space-y-2 p-4 animate-slide-up">
       <Tabs defaultValue="income-expenses">
@@ -234,34 +258,47 @@ export function FinancialCharts({
           
         <TabsContent value="income-expenses" className="pt-2">
           <div className="h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={visibleData}>
+            <ChartContainer config={chartConfig}>
+              <AreaChart data={visibleData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                 <defs>
                   <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/>
+                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="projectedGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.6}/>
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="month" />
+                <XAxis 
+                  dataKey="month" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10 }}
+                />
                 <YAxis 
                   tickFormatter={(value) => `${CURRENCY_SYMBOLS[displayCurrency]}${value}`}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10 }}
                 />
-                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
                 <Tooltip 
-                  formatter={formatTooltipValue}
-                  contentStyle={{
-                    backgroundColor: 'var(--background)',
-                    borderColor: 'var(--border)',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
+                          <p className="font-medium mb-1">{payload[0].payload.month}</p>
+                          {payload.map((entry, index) => (
+                            <div key={`tooltip-${index}`} className="flex justify-between gap-4">
+                              <span style={{ color: entry.color }}>{entry.name}:</span>
+                              <span className="font-medium">{formatCurrency(entry.value as number, displayCurrency)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
                   }}
                 />
                 <Area 
@@ -271,6 +308,7 @@ export function FinancialCharts({
                   stroke="#0ea5e9" 
                   fillOpacity={1} 
                   fill="url(#incomeGradient)" 
+                  strokeWidth={2}
                 />
                 <Area 
                   type="monotone" 
@@ -278,12 +316,12 @@ export function FinancialCharts({
                   name="Expenses" 
                   stroke="#f43f5e" 
                   fillOpacity={1} 
-                  fill={hasFutureData ? "url(#projectedGradient)" : "url(#expenseGradient)"}
+                  fill="url(#expenseGradient)"
+                  strokeWidth={2}
                   strokeDasharray={hasFutureData ? "4 4" : "0"}
                 />
-                <Legend />
               </AreaChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </div>
           {hasFutureData && (
             <div className="text-xs text-muted-foreground mt-1 flex items-center">
@@ -295,20 +333,35 @@ export function FinancialCharts({
         
         <TabsContent value="savings" className="pt-2">
           <div className="h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={visibleData}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                <XAxis dataKey="month" />
+            <ChartContainer config={chartConfig}>
+              <BarChart data={visibleData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
+                <XAxis 
+                  dataKey="month" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10 }}
+                />
                 <YAxis 
                   tickFormatter={(value) => `${CURRENCY_SYMBOLS[displayCurrency]}${value}`}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10 }}
                 />
                 <Tooltip 
-                  formatter={formatTooltipValue}
-                  contentStyle={{
-                    backgroundColor: 'var(--background)',
-                    borderColor: 'var(--border)',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
+                          <p className="font-medium mb-1">{payload[0].payload.month}</p>
+                          <div className="flex justify-between gap-4">
+                            <span style={{ color: payload[0].value >= 0 ? "#10b981" : "#f43f5e" }}>Savings:</span>
+                            <span className="font-medium">{formatCurrency(payload[0].value as number, displayCurrency)}</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
                   }}
                 />
                 <Bar 
@@ -326,7 +379,7 @@ export function FinancialCharts({
                   ))}
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </div>
           {hasFutureData && (
             <div className="text-xs text-muted-foreground mt-1 flex items-center">
@@ -371,12 +424,25 @@ export function FinancialCharts({
                   })}
                 </Pie>
                 <Tooltip 
-                  formatter={formatTooltipValue} 
-                  contentStyle={{
-                    backgroundColor: 'var(--background)',
-                    borderColor: 'var(--border)',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-background border border-border rounded-md p-2 shadow-md text-xs">
+                          <p className="font-medium mb-1">{payload[0].name}</p>
+                          <div className="flex justify-between gap-4">
+                            <span>Amount:</span>
+                            <span className="font-medium">{formatCurrency(payload[0].value as number, displayCurrency)}</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span>Percentage:</span>
+                            <span className="font-medium">
+                              {payload[0].payload.percentage.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
                   }}
                 />
               </PieChart>
