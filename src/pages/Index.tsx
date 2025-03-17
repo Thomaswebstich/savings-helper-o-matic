@@ -1,6 +1,7 @@
+
 import { useState } from 'react';
 import { Navbar } from '@/components/Navbar';
-import { ExpenseForm } from '@/components/ExpenseForm';
+import { ExpenseForm } from '@/components/expense-form';
 import { SettingsManager } from '@/components/SettingsManager';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useExpenseActions } from '@/hooks/useExpenseActions';

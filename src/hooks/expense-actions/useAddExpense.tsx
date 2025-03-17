@@ -1,8 +1,7 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Expense, Category, Currency } from '@/lib/data';
-import { ExpenseFormValues } from '@/components/ExpenseForm';
+import { ExpenseFormValues } from '@/components/expense-form/types';
 import { toast } from '@/hooks/use-toast';
 
 interface UseAddExpenseProps {

@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Expense, Category } from '@/lib/data';
-import { ExpenseFormValues } from '@/components/ExpenseForm';
+import { ExpenseFormValues } from '@/components/expense-form/types';
 import { 
   useAddExpense, 
   useEditExpense, 
