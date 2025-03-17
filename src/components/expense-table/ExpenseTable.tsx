@@ -1,10 +1,14 @@
 
 import { useState, useMemo } from 'react';
-import { Expense, Category } from '@/lib/data';
+import { Expense, Category, formatCurrency } from '@/lib/data';
 import { ExpenseTableFilters } from './ExpenseTableFilters';
 import { ExpenseMonthGroup } from './ExpenseMonthGroup';
 import { ExpenseProjectionToggle } from './ExpenseProjectionToggle';
 import { generateProjectedExpenses } from './expense-utils';
+import { MonthGroup, SortConfig } from './types';
+import { format, startOfMonth } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
 interface ExpenseTableProps {
   expenses: Expense[];
@@ -23,7 +27,7 @@ export function ExpenseTable({
 }: ExpenseTableProps) {
   const [search, setSearch] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Expense; direction: 'asc' | 'desc' }>({ 
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ 
     key: 'date', direction: 'desc' 
   });
   const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
@@ -171,8 +175,6 @@ export function ExpenseTable({
 
 // Helper functions
 function filterExpense(expense: Expense, search: string, selectedCategories: string[]): boolean {
-  const { formatCurrency } = require('@/lib/data');
-  
   // Filter by search term
   const matchesSearch = 
     expense.description.toLowerCase().includes(search.toLowerCase()) ||
@@ -185,10 +187,7 @@ function filterExpense(expense: Expense, search: string, selectedCategories: str
   return matchesSearch && matchesCategory;
 }
 
-function groupExpensesByMonth(filteredExpenses: Expense[], sortConfig: { key: keyof Expense; direction: 'asc' | 'desc' }, categoryMap: Map<string, Category>) {
-  const { format, startOfMonth } = require('date-fns');
-  const { MonthGroup } = require('./types');
-  
+function groupExpensesByMonth(filteredExpenses: Expense[], sortConfig: SortConfig, categoryMap: Map<string, Category>): MonthGroup[] {
   const groups: MonthGroup[] = [];
   const monthMap = new Map<string, MonthGroup>();
   
@@ -288,8 +287,3 @@ function getCategoryColor(categoryId: string): string {
   
   return colors[Math.abs(hash) % colors.length];
 }
-
-// Import from the ui components
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { format } from 'date-fns';
