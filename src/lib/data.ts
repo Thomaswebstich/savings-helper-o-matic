@@ -370,11 +370,10 @@ export const seedDatabaseWithMockData = async (expenses: Expense[]) => {
   
   // Transform expenses to DB format
   const dbExpenses = expenses.map(expense => ({
-    id: expense.id,
-    description: expense.description,
-    amount: expense.amount.toString(), // Convert to string for DB
-    date: expense.date.toISOString().split('T')[0],
+    amount: expense.amount,
     category: expense.category,
+    date: expense.date.toISOString().split('T')[0],
+    description: expense.description,
     is_recurring: expense.isRecurring,
     recurrence_interval: expense.recurrenceInterval,
     stop_date: expense.stopDate ? expense.stopDate.toISOString().split('T')[0] : null,

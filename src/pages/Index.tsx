@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { DataCard } from '@/components/DataCard';
@@ -18,7 +17,7 @@ import {
   MONTHLY_INCOME
 } from '@/lib/data';
 import { ExpenseForm, ExpenseFormValues } from '@/components/ExpenseForm';
-import { Banknote, Calendar, Coins, CreditCard, ReceiptText, TrendingDown, TrendingUp } from 'lucide-react';
+import { Banknote, Calendar, Coins, CreditCard, ReceiptText } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -31,7 +30,6 @@ export default function Index() {
   const [monthlyIncome, setMonthlyIncome] = useState<number>(MONTHLY_INCOME);
   const [timeRange, setTimeRange] = useState({ monthsBack: 6, monthsForward: 3 });
   
-  // Load data from Supabase on component mount
   useEffect(() => {
     async function fetchExpenses() {
       setIsLoading(true);
@@ -46,7 +44,6 @@ export default function Index() {
         }
         
         if (data && data.length > 0) {
-          // Transform database data to match our Expense type
           const transformedExpenses: Expense[] = data.map(item => ({
             id: item.id,
             description: item.description,
@@ -61,7 +58,6 @@ export default function Index() {
           
           setExpenses(transformedExpenses);
         } else {
-          // Load mock data if no data in database
           const mockData = generateMockExpenses();
           setExpenses(mockData);
           
@@ -76,7 +72,6 @@ export default function Index() {
           variant: "destructive"
         });
         
-        // Fallback to mock data
         const mockData = generateMockExpenses();
         setExpenses(mockData);
       } finally {
@@ -87,26 +82,22 @@ export default function Index() {
     fetchExpenses();
   }, []);
   
-  // Calculate monthly totals for charts with current time range
   const monthlyData = useMemo(() => {
     if (expenses.length === 0) return [];
     return calculateMonthlyTotals(expenses, monthlyIncome, timeRange.monthsBack, timeRange.monthsForward);
   }, [expenses, monthlyIncome, timeRange]);
   
-  // Calculate category totals
   const categoryData = useMemo(() => {
     if (expenses.length === 0) return [];
     return calculateCategoryTotals(expenses);
   }, [expenses]);
   
-  // Calculate current month totals
   const currentMonthData = useMemo(() => {
     if (monthlyData.length === 0) return null;
     
-    const data = monthlyData[monthlyData.length - timeRange.monthsForward - 1]; // Get the most recent actual month
+    const data = monthlyData[monthlyData.length - timeRange.monthsForward - 1];
     if (!data) return null;
     
-    // Convert totals to display currency
     return {
       month: data.month,
       income: convertCurrency(data.income, "THB", displayCurrency),
@@ -115,7 +106,6 @@ export default function Index() {
     };
   }, [monthlyData, displayCurrency, timeRange.monthsForward]);
   
-  // Calculate month-over-month change for expenses
   const expenseChange = useMemo(() => {
     if (monthlyData.length < 2) return { value: 0, isPositive: false };
     
@@ -127,11 +117,10 @@ export default function Index() {
     const change = ((currentMonth.expenses - previousMonth.expenses) / previousMonth.expenses) * 100;
     return {
       value: Math.abs(change),
-      isPositive: change < 0 // Lower expenses is positive trend
+      isPositive: change < 0
     };
   }, [monthlyData, timeRange.monthsForward]);
   
-  // Calculate month-over-month change for savings
   const savingsChange = useMemo(() => {
     if (monthlyData.length < 2) return { value: 0, isPositive: false };
     
@@ -147,7 +136,6 @@ export default function Index() {
     };
   }, [monthlyData, timeRange.monthsForward]);
   
-  // Calculate total expenses
   const totalExpenses = useMemo(() => {
     const totalInTHB = expenses.reduce((total, expense) => {
       const amountInTHB = convertCurrency(expense.amount, expense.currency, "THB");
@@ -157,24 +145,20 @@ export default function Index() {
     return convertCurrency(totalInTHB, "THB", displayCurrency);
   }, [expenses, displayCurrency]);
   
-  // Handle adding a new expense
   const handleAddExpense = async (data: ExpenseFormValues) => {
     const newExpense: Expense = {
       id: crypto.randomUUID(),
       ...data
     };
     
-    // Add to local state first for immediate UI update
     setExpenses(prev => [newExpense, ...prev]);
     
-    // Save to database
     try {
       const { error } = await supabase
         .from('expenses')
         .insert({
-          id: newExpense.id,
           description: newExpense.description,
-          amount: newExpense.amount.toString(), // Convert to string to fix type error
+          amount: newExpense.amount,
           date: newExpense.date.toISOString().split('T')[0],
           category: newExpense.category,
           is_recurring: newExpense.isRecurring,
@@ -199,19 +183,15 @@ export default function Index() {
     }
   };
   
-  // Handle editing an expense
   const handleEditExpense = (expense: Expense) => {
     setCurrentExpense(expense);
     setIsFormOpen(true);
   };
   
-  // Handle form submission for both add and edit
   const handleFormSubmit = async (data: ExpenseFormValues) => {
     if (currentExpense) {
-      // Update existing expense
       const updatedExpense = { ...currentExpense, ...data };
       
-      // Update local state first
       setExpenses(prev => 
         prev.map(exp => 
           exp.id === currentExpense.id 
@@ -220,13 +200,12 @@ export default function Index() {
         )
       );
       
-      // Update in database
       try {
         const { error } = await supabase
           .from('expenses')
           .update({
             description: data.description,
-            amount: data.amount.toString(), // Convert to string to fix type error
+            amount: data.amount,
             date: data.date.toISOString().split('T')[0],
             category: data.category,
             is_recurring: data.isRecurring,
@@ -253,17 +232,13 @@ export default function Index() {
       
       setCurrentExpense(null);
     } else {
-      // Add new expense
       handleAddExpense(data);
     }
   };
   
-  // Handle deleting an expense
   const handleDeleteExpense = async (id: string) => {
-    // Update local state first
     setExpenses(prev => prev.filter(exp => exp.id !== id));
     
-    // Delete from database
     try {
       const { error } = await supabase
         .from('expenses')
@@ -286,13 +261,11 @@ export default function Index() {
     }
   };
   
-  // Close form and reset current expense
   const handleCloseForm = () => {
     setIsFormOpen(false);
     setCurrentExpense(null);
   };
   
-  // Handle income change
   const handleIncomeChange = (newIncome: number) => {
     setMonthlyIncome(newIncome);
     toast({
@@ -301,7 +274,6 @@ export default function Index() {
     });
   };
   
-  // Handle time range change from charts
   const handleTimeRangeChange = (newRange: { monthsBack: number, monthsForward: number }) => {
     setTimeRange(newRange);
   };
@@ -332,7 +304,6 @@ export default function Index() {
           </div>
         ) : (
           <>
-            {/* Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <DataCard
                 title="Total Expenses"
@@ -365,7 +336,6 @@ export default function Index() {
               />
             </div>
             
-            {/* Financial Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               <div className="lg:col-span-2">
                 <FinancialCharts 
@@ -382,7 +352,6 @@ export default function Index() {
               </div>
             </div>
             
-            {/* Expense Analysis - New component */}
             <div className="mb-8">
               <ExpenseAnalysis 
                 expenses={expenses}
@@ -391,7 +360,6 @@ export default function Index() {
               />
             </div>
             
-            {/* Expenses Table */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold">Expenses</h2>
@@ -414,7 +382,6 @@ export default function Index() {
         )}
       </main>
       
-      {/* Add/Edit Expense Form */}
       <ExpenseForm 
         open={isFormOpen} 
         onClose={handleCloseForm} 
