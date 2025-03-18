@@ -19,7 +19,10 @@ export function QuickReceiptUpload({
   onAddExpense,
   className 
 }: QuickReceiptUploadProps) {
-  const handleExpenseRecognized = (data: ExpenseFormValues) => {
+  const handleExpenseRecognized = (data: ExpenseFormValues & { 
+    receiptImage?: string; 
+    receiptThumbnail?: string 
+  }) => {
     // Create a new expense object from the recognized data
     const newExpense: Expense = {
       id: crypto.randomUUID(), // Use built-in randomUUID instead of v4
@@ -30,7 +33,9 @@ export function QuickReceiptUpload({
       isRecurring: data.isRecurring,
       recurrenceInterval: data.recurrenceInterval,
       stopDate: data.stopDate,
-      currency: data.currency
+      currency: data.currency,
+      receiptImage: data.receiptImage,
+      receiptThumbnail: data.receiptThumbnail
     };
 
     // Add the expense

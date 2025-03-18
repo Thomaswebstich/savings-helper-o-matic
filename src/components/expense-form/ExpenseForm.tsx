@@ -29,7 +29,10 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
     onClose
   });
 
-  const handleExpenseRecognized = (recognizedData: ExpenseFormValues) => {
+  const handleExpenseRecognized = (recognizedData: ExpenseFormValues & { 
+    receiptImage?: string;
+    receiptThumbnail?: string;
+  }) => {
     // Update the form values with the recognized data
     form.reset({
       ...recognizedData,

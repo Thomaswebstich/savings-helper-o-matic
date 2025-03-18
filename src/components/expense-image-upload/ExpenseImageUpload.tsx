@@ -10,20 +10,23 @@ import { Upload, Image as ImageIcon, Check, X, Plus, Trash } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import { Category } from '@/lib/data';
 import { Currency } from '@/lib/types/currency';
-import { Expense } from '@/lib/types/expense';
 
 interface ExpenseImageUploadProps {
-  onExpenseRecognized?: (expense: Expense) => void;
+  onExpenseRecognized?: (expenseData: ExpenseFormValues & { receiptImage?: string; receiptThumbnail?: string }) => void;
   categories?: Category[];
   className?: string;
   compact?: boolean;
+  disabled?: boolean;
+  multiUpload?: boolean;
 }
 
 export function ExpenseImageUpload({ 
   onExpenseRecognized, 
   categories = [],
   className,
-  compact = false 
+  compact = false,
+  disabled = false,
+  multiUpload = false
 }: ExpenseImageUploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [processing, setProcessing] = useState<Record<string, boolean>>({});
@@ -33,6 +36,8 @@ export function ExpenseImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
+    
     const newFiles = Array.from(event.target.files || []);
     if (newFiles.length > 0) {
       setFiles(prev => [...prev, ...newFiles]);
@@ -208,31 +213,35 @@ export function ExpenseImageUpload({
         }
       }
       
-      // Create the expense object
-      const expense: Expense = {
-        id: crypto.randomUUID(),
-        amount: parseFloat(result.amount) || 0,
+      // Create the expense form values object
+      const expenseData: ExpenseFormValues & { 
+        receiptThumbnail?: string;
+        receiptImage?: string;
+      } = {
         description: result.vendor || result.description || 'Expense from receipt',
+        amount: parseFloat(result.amount) || 0,
         date: date,
-        categoryId: categoryId,
+        category: categoryId,
         isRecurring: false,
         currency: (result.currency || 'THB') as Currency,
         receiptThumbnail: thumbnail,
         receiptImage: imageUrl
       };
       
-      console.log('Created expense from receipt:', expense);
+      console.log('Created expense data from receipt:', expenseData);
       
-      // Call the callback with the recognized expense
+      // Call the callback with the recognized expense data
       if (onExpenseRecognized) {
-        onExpenseRecognized(expense);
+        onExpenseRecognized(expenseData);
         
         // Remove the file from state after processing
-        setFiles(prev => prev.filter(f => f.name !== fileName));
+        if (!multiUpload) {
+          setFiles(prev => prev.filter(f => f.name !== fileName));
+        }
         
         toast({
-          title: "Expense Added",
-          description: "Receipt has been processed and expense added"
+          title: "Expense Data Recognized",
+          description: "Receipt has been processed successfully"
         });
       }
     } catch (error) {

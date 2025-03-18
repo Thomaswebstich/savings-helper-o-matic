@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Expense, Category, Currency } from '@/lib/data';
@@ -11,7 +12,10 @@ interface UseAddExpenseProps {
 }
 
 export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpenseProps) {
-  const handleAddExpense = async (data: ExpenseFormValues & { receiptImage?: string, receiptThumbnail?: string }) => {
+  const handleAddExpense = async (data: ExpenseFormValues & { 
+    receiptImage?: string, 
+    receiptThumbnail?: string 
+  }) => {
     console.log("Adding new expense with form data:", data);
     
     const categoryId = data.category;
@@ -38,10 +42,14 @@ export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpen
     
     const newExpense: Expense = {
       id: crypto.randomUUID(),
-      ...data,
+      description: data.description,
+      amount: data.amount,
       date: expenseDate,
       stopDate: stopDate,
       categoryId: categoryId,
+      isRecurring: data.isRecurring,
+      recurrenceInterval: data.recurrenceInterval,
+      currency: data.currency,
       receiptImage: data.receiptImage,
       receiptThumbnail: data.receiptThumbnail
     };
@@ -66,7 +74,9 @@ export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpen
         is_recurring: newExpense.isRecurring,
         recurrence_interval: newExpense.recurrenceInterval,
         stop_date: formattedStopDate,
-        currency: newExpense.currency
+        currency: newExpense.currency,
+        receipt_image: newExpense.receiptImage,
+        receipt_thumbnail: newExpense.receiptThumbnail
       };
       
       console.log("Preparing to insert expense into database:", dbExpense);
