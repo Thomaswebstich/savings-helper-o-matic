@@ -28,12 +28,15 @@ export function ExpenseImageUpload({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [pendingExpenses, setPendingExpenses] = useState<Array<{
+    id: string;
     previewUrl: string;
     data: ExpenseFormValues;
     isProcessing: boolean;
     isApproved: boolean;
+    fileName: string;
   }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [processingQueue, setProcessingQueue] = useState<boolean>(false);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -51,11 +54,13 @@ export function ExpenseImageUpload({
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       if (multiUpload) {
         // Process multiple files
-        Array.from(e.dataTransfer.files).forEach(file => {
-          if (file.type.startsWith('image/')) {
-            handleImageFile(file);
-          }
-        });
+        const imageFiles = Array.from(e.dataTransfer.files).filter(file => 
+          file.type.startsWith('image/')
+        );
+        
+        if (imageFiles.length > 0) {
+          addFilesToQueue(imageFiles);
+        }
       } else if (e.dataTransfer.files[0]) {
         // Process single file
         handleImageFile(e.dataTransfer.files[0]);
@@ -67,16 +72,74 @@ export function ExpenseImageUpload({
     if (e.target.files && e.target.files.length > 0) {
       if (multiUpload) {
         // Process multiple files
-        Array.from(e.target.files).forEach(file => {
-          if (file.type.startsWith('image/')) {
-            handleImageFile(file);
-          }
-        });
+        const imageFiles = Array.from(e.target.files).filter(file => 
+          file.type.startsWith('image/')
+        );
+        
+        if (imageFiles.length > 0) {
+          addFilesToQueue(imageFiles);
+        }
       } else if (e.target.files[0]) {
         // Process single file
         handleImageFile(e.target.files[0]);
       }
     }
+    
+    // Reset the file input so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Add files to processing queue
+  const addFilesToQueue = (files: File[]) => {
+    const newPendingExpenses = files.map(file => ({
+      id: crypto.randomUUID(),
+      previewUrl: URL.createObjectURL(file),
+      data: {
+        description: '',
+        amount: 0,
+        date: new Date(),
+        category: '',
+        isRecurring: false,
+        currency: 'THB'
+      },
+      isProcessing: true,
+      isApproved: false,
+      fileName: file.name
+    }));
+    
+    setPendingExpenses(prev => [...prev, ...newPendingExpenses]);
+    
+    // Start processing the queue if not already processing
+    if (!processingQueue) {
+      processFilesSequentially(files);
+    }
+  };
+
+  // Process files one by one to avoid race conditions
+  const processFilesSequentially = async (files: File[]) => {
+    setProcessingQueue(true);
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const fileId = pendingExpenses.length + i;
+      
+      try {
+        // Process each file
+        await analyzeImage(file, fileId);
+        
+        // Small delay between processing each file to avoid rate-limiting
+        if (i < files.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (error) {
+        console.error(`Error processing file ${file.name}:`, error);
+        // Continue with next file even if this one fails
+      }
+    }
+    
+    setProcessingQueue(false);
   };
 
   const handleImageFile = async (file: File) => {
@@ -96,25 +159,26 @@ export function ExpenseImageUpload({
     if (multiUpload) {
       // Add to pending list first
       const pendingIndex = pendingExpenses.length;
-      setPendingExpenses(prev => [
-        ...prev, 
-        { 
-          previewUrl, 
-          data: {
-            description: '',
-            amount: 0,
-            date: new Date(),
-            category: '',
-            isRecurring: false,
-            currency: 'THB'
-          },
-          isProcessing: true,
-          isApproved: false
-        }
-      ]);
+      const newExpense = {
+        id: crypto.randomUUID(),
+        previewUrl, 
+        data: {
+          description: '',
+          amount: 0,
+          date: new Date(),
+          category: '',
+          isRecurring: false,
+          currency: 'THB'
+        },
+        isProcessing: true,
+        isApproved: false,
+        fileName: file.name
+      };
+      
+      setPendingExpenses(prev => [...prev, newExpense]);
       
       // Process the image
-      await analyzeImage(file, pendingIndex);
+      await analyzeImage(file, pendingExpenses.length);
     } else {
       // Single upload mode - process immediately
       setIsUploading(true);
@@ -170,8 +234,13 @@ export function ExpenseImageUpload({
         };
 
         if (multiUpload && pendingIndex !== undefined) {
-          // Update the pending expense
+          // Update the pending expense - find by index rather than directly using the index
           setPendingExpenses(prev => {
+            if (pendingIndex >= prev.length) {
+              console.error("Pending index out of bounds:", pendingIndex, prev.length);
+              return prev;
+            }
+            
             const updated = [...prev];
             updated[pendingIndex] = {
               ...updated[pendingIndex],
@@ -183,7 +252,7 @@ export function ExpenseImageUpload({
           
           toast({
             title: "Receipt analyzed",
-            description: "We've extracted the details from your receipt",
+            description: `Analysis complete for ${file.name}`,
           });
         } else {
           // Single upload mode - call callback directly
@@ -200,8 +269,12 @@ export function ExpenseImageUpload({
       console.error('Error analyzing image:', error);
       
       if (multiUpload && pendingIndex !== undefined) {
-        // Update the pending expense to show error
+        // Update the pending expense to show error - find by index
         setPendingExpenses(prev => {
+          if (pendingIndex >= prev.length) {
+            return prev;
+          }
+          
           const updated = [...prev];
           if (updated[pendingIndex]) {
             updated[pendingIndex].isProcessing = false;
@@ -212,7 +285,7 @@ export function ExpenseImageUpload({
       
       toast({
         title: "Analysis failed",
-        description: "We couldn't analyze your receipt. Please try again or enter details manually.",
+        description: `Could not analyze ${file.name}. Please try again or enter details manually.`,
         variant: "destructive"
       });
     } finally {
@@ -253,41 +326,72 @@ export function ExpenseImageUpload({
   };
 
   const handleCancel = () => {
+    // Clean up object URLs to prevent memory leaks
+    pendingExpenses.forEach(expense => {
+      URL.revokeObjectURL(expense.previewUrl);
+    });
     setPendingExpenses([]);
   };
 
-  const handleExpenseApprove = (index: number) => {
-    setPendingExpenses(prev => {
-      const expense = prev[index];
-      if (!expense.isProcessing) {
-        onExpenseRecognized(expense.data);
-        
-        // Mark as approved
+  const handleExpenseApprove = (expenseId: string) => {
+    const expenseIndex = pendingExpenses.findIndex(e => e.id === expenseId);
+    if (expenseIndex === -1) return;
+    
+    const expense = pendingExpenses[expenseIndex];
+    if (!expense.isProcessing) {
+      onExpenseRecognized(expense.data);
+      
+      // Mark as approved
+      setPendingExpenses(prev => {
         const updated = [...prev];
-        updated[index] = {
-          ...updated[index],
+        updated[expenseIndex] = {
+          ...updated[expenseIndex],
           isApproved: true
         };
         return updated;
-      }
-      return prev;
-    });
+      });
+    }
   };
 
-  const handleExpenseDelete = (index: number) => {
-    setPendingExpenses(prev => prev.filter((_, i) => i !== index));
+  const handleExpenseDelete = (expenseId: string) => {
+    const expenseToDelete = pendingExpenses.find(e => e.id === expenseId);
+    if (expenseToDelete) {
+      // Clean up object URL
+      URL.revokeObjectURL(expenseToDelete.previewUrl);
+    }
+    
+    setPendingExpenses(prev => prev.filter(exp => exp.id !== expenseId));
   };
 
   const clearApprovedExpenses = () => {
+    // Clean up object URLs for approved expenses
+    pendingExpenses.filter(exp => exp.isApproved).forEach(expense => {
+      URL.revokeObjectURL(expense.previewUrl);
+    });
+    
     setPendingExpenses(prev => prev.filter(exp => !exp.isApproved));
   };
 
   // Cleanup pending list - remove approved items if all are approved
   if (pendingExpenses.length > 0 && pendingExpenses.every(exp => exp.isApproved)) {
     setTimeout(() => {
-      setPendingExpenses([]);
+      handleCancel(); // Use handleCancel to properly clean up object URLs
     }, 1000);
   }
+
+  // Clean up object URLs when component unmounts
+  const cleanupObjectUrls = () => {
+    pendingExpenses.forEach(expense => {
+      URL.revokeObjectURL(expense.previewUrl);
+    });
+  };
+
+  // Add cleanup for unmount
+  React.useEffect(() => {
+    return () => {
+      cleanupObjectUrls();
+    };
+  }, []);
 
   return (
     <Card className={cn(
@@ -331,7 +435,7 @@ export function ExpenseImageUpload({
             ) : (
               <>
                 <div className="mb-3 bg-muted rounded-full p-3">
-                  {isUploading ? <Spinner className="w-6 h-6" /> : <Upload className="w-6 h-6 text-muted-foreground" />}
+                  {isUploading || processingQueue ? <Spinner className="w-6 h-6" /> : <Upload className="w-6 h-6 text-muted-foreground" />}
                 </div>
                 <p className={cn(
                   "font-medium mb-1",
@@ -367,9 +471,9 @@ export function ExpenseImageUpload({
                 </Button>
               </div>
               <div className="grid gap-2 max-h-[350px] overflow-y-auto pr-1">
-                {pendingExpenses.map((expense, index) => (
+                {pendingExpenses.map((expense) => (
                   <div 
-                    key={index} 
+                    key={expense.id} 
                     className={cn(
                       "p-3 rounded-lg border flex items-start gap-3 group transition-colors",
                       expense.isApproved 
@@ -387,7 +491,7 @@ export function ExpenseImageUpload({
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex justify-between">
                         <p className="font-medium text-sm truncate">
-                          {expense.data.description}
+                          {expense.isProcessing ? expense.fileName : expense.data.description}
                         </p>
                         <div className="flex gap-1">
                           {expense.isProcessing ? (
@@ -400,7 +504,7 @@ export function ExpenseImageUpload({
                                 size="icon" 
                                 variant="ghost" 
                                 className="h-5 w-5" 
-                                onClick={() => handleExpenseDelete(index)}
+                                onClick={() => handleExpenseDelete(expense.id)}
                               >
                                 <Trash className="h-3.5 w-3.5 text-muted-foreground" />
                               </Button>
@@ -408,7 +512,7 @@ export function ExpenseImageUpload({
                                 size="icon" 
                                 variant="ghost" 
                                 className="h-5 w-5" 
-                                onClick={() => handleExpenseApprove(index)}
+                                onClick={() => handleExpenseApprove(expense.id)}
                               >
                                 <Check className="h-3.5 w-3.5" />
                               </Button>
@@ -416,26 +520,28 @@ export function ExpenseImageUpload({
                           )}
                         </div>
                       </div>
-                      <div className="text-xs text-muted-foreground space-y-0.5">
-                        <div className="flex justify-between">
-                          <span>Amount:</span>
-                          <span className="font-medium">
-                            {expense.data.currency} {expense.data.amount.toFixed(2)}
-                          </span>
+                      {!expense.isProcessing && (
+                        <div className="text-xs text-muted-foreground space-y-0.5">
+                          <div className="flex justify-between">
+                            <span>Amount:</span>
+                            <span className="font-medium">
+                              {expense.data.currency} {expense.data.amount.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Date:</span>
+                            <span className="font-medium">
+                              {expense.data.date.toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Category:</span>
+                            <span className="font-medium">
+                              {categories.find(c => c.id === expense.data.category)?.name || 'None'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Date:</span>
-                          <span className="font-medium">
-                            {expense.data.date.toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Category:</span>
-                          <span className="font-medium">
-                            {categories.find(c => c.id === expense.data.category)?.name || 'None'}
-                          </span>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -7,7 +7,7 @@ import { QuickReceiptUpload } from '@/components/dashboard/QuickReceiptUpload';
 interface ExpenseTableWrapperProps {
   expenses: Expense[];
   categories: Category[];
-  onAddExpense?: ((expense: Expense) => void) | (() => void);
+  onAddExpense?: (expense: Expense) => void;
   onEditExpense?: (expense: Expense) => void;
   onDeleteExpense?: (id: string) => void;
   monthlyIncome?: number;
@@ -32,17 +32,7 @@ export function ExpenseTableWrapper({
       {onAddExpense && (
         <QuickReceiptUpload 
           categories={categories} 
-          onAddExpense={(expense: Expense) => {
-            // Handle both function signatures
-            if (typeof onAddExpense === 'function') {
-              // Check if it expects an argument
-              if (onAddExpense.length > 0) {
-                (onAddExpense as (expense: Expense) => void)(expense);
-              } else {
-                (onAddExpense as () => void)();
-              }
-            }
-          }}
+          onAddExpense={onAddExpense}
           className="mb-4"
         />
       )}

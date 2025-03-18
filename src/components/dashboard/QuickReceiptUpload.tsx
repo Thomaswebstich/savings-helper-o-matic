@@ -31,7 +31,6 @@ export function QuickReceiptUpload({
       recurrenceInterval: data.recurrenceInterval,
       stopDate: data.stopDate,
       currency: data.currency
-      // Remove createdAt as it's not in the Expense type
     };
 
     // Add the expense
