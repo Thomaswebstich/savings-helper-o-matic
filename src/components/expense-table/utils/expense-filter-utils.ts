@@ -1,7 +1,21 @@
-
 import { Expense, Category, convertCurrency } from '@/lib/data';
 import { format, parse, isWithinInterval, startOfMonth, endOfMonth, isSameMonth, parseISO } from 'date-fns';
 import { MonthGroup, SortConfig } from '../types';
+
+export const filterExpense = (
+  expense: Expense, 
+  searchTerm: string, 
+  selectedCategories: string[]
+): boolean => {
+  const matchesSearch = !searchTerm || 
+    expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    expense.amount.toString().includes(searchTerm);
+    
+  const matchesCategory = selectedCategories.length === 0 || 
+    selectedCategories.includes(expense.categoryId || '');
+    
+  return matchesSearch && matchesCategory;
+};
 
 export const groupExpensesByMonth = (
   expenses: Expense[], 
@@ -16,9 +30,8 @@ export const groupExpensesByMonth = (
     
     if (!groups.has(monthKey)) {
       groups.set(monthKey, {
-        key: monthKey,
-        label: monthLabel,
         month: startOfMonth(expenseDate),
+        label: monthLabel,
         expenses: [],
         total: 0,
         categoryTotals: new Map()
@@ -76,8 +89,8 @@ export const groupExpensesByMonth = (
   // Convert map to array and sort by date (most recent first)
   return Array.from(groups.values())
     .sort((a, b) => {
-      const dateA = parse(a.key, 'yyyy-MM', new Date());
-      const dateB = parse(b.key, 'yyyy-MM', new Date());
+      const dateA = a.month;
+      const dateB = b.month;
       return dateB.getTime() - dateA.getTime();
     });
 };

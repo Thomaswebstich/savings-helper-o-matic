@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from 'react';
 import { Expense, Category } from '@/lib/data';
 import { ExpenseTableFilters } from './ExpenseTableFilters';
@@ -11,7 +10,8 @@ import { Plus, BarChart4 } from 'lucide-react';
 import { useSortExpenses } from './hooks/useSortExpenses';
 import { useExpandedMonths } from './hooks/useExpandedMonths';
 import { useExpenseFilters } from './hooks/useExpenseFilters';
-import { filterExpense, groupExpensesByMonth, getCategoryColor } from './utils/expense-filter-utils';
+import { filterExpense, groupExpensesByMonth } from './utils/expense-filter-utils';
+import { getCategoryColor } from './utils/expense-category-utils';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { extractColorFromClass } from '@/components/expense-analysis/utils/category-breakdown-utils';
@@ -73,8 +73,8 @@ export function ExpenseTable({
   
   // Group expenses by month and calculate category totals within each month
   const monthGroups = useMemo(() => {
-    return groupExpensesByMonth(filteredExpenses, sortConfig, categoryMap);
-  }, [filteredExpenses, sortConfig, categoryMap]);
+    return groupExpensesByMonth(filteredExpenses, sortConfig);
+  }, [filteredExpenses, sortConfig]);
   
   // Generate consistent category legend data across all months
   const categoryLegendData = useMemo(() => {
