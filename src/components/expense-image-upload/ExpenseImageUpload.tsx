@@ -38,39 +38,64 @@ export function ExpenseImageUpload({
     setIsUploading(true);
     
     try {
-      // Handle first file for initial preview
-      const file = files[0];
+      // Handle files one by one
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        await processFile(file);
+      }
+    } catch (error) {
+      console.error('Error processing file(s):', error);
+    } finally {
+      setIsUploading(false);
+      
+      // Reset the file input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  const processFile = (file: File): Promise<void> => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
       reader.onload = (e) => {
-        const imageDataUrl = e.target?.result as string;
-        setPreviewImage(imageDataUrl);
-        
-        // For now, we'll just pass the image data URLs directly
-        // In a real app, you might upload this to a server and get back URLs
-        const recognizedData: ExpenseFormValues & { 
-          receiptImage?: string; 
-          receiptThumbnail?: string 
-        } = {
-          description: '',
-          amount: 0,
-          date: new Date(),
-          category: '',
-          isRecurring: false,
-          currency: 'THB',
-          receiptImage: imageDataUrl,
-          receiptThumbnail: imageDataUrl
-        };
-        
-        onExpenseRecognized(recognizedData);
+        try {
+          const imageDataUrl = e.target?.result as string;
+          // Only set the preview for the first file or in single file mode
+          if (!multiUpload || !previewImage) {
+            setPreviewImage(imageDataUrl);
+          }
+          
+          // Mock data - in a real app, this would be extracted from the receipt by AI
+          // For now we'll create somewhat realistic looking data
+          const recognizedData: ExpenseFormValues & { 
+            receiptImage?: string; 
+            receiptThumbnail?: string 
+          } = {
+            description: file.name.split('.')[0] || 'Receipt payment',
+            amount: Math.floor(Math.random() * 1000) + 10,
+            date: new Date(),
+            category: categories.length > 0 ? categories[Math.floor(Math.random() * categories.length)].id : '',
+            isRecurring: false,
+            currency: 'THB',
+            receiptImage: imageDataUrl,
+            receiptThumbnail: imageDataUrl
+          };
+          
+          onExpenseRecognized(recognizedData);
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      reader.onerror = (error) => {
+        reject(error);
       };
       
       reader.readAsDataURL(file);
-    } catch (error) {
-      console.error('Error processing file:', error);
-    } finally {
-      setIsUploading(false);
-    }
+    });
   };
   
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
@@ -80,19 +105,46 @@ export function ExpenseImageUpload({
     const files = event.dataTransfer.files;
     if (!files || files.length === 0) return;
     
-    // Create a new FileList-like object from the dropped files
-    const dataTransfer = new DataTransfer();
-    for (let i = 0; i < (multiUpload ? files.length : 1); i++) {
-      dataTransfer.items.add(files[i]);
-    }
+    setIsUploading(true);
     
-    // Update the file input's files property
-    if (fileInputRef.current) {
-      fileInputRef.current.files = dataTransfer.files;
+    try {
+      // Process either all files or just the first one based on multiUpload flag
+      const filesToProcess = multiUpload ? files : [files[0]];
       
-      // Trigger the onChange event manually
-      const changeEvent = new Event('change', { bubbles: true });
-      fileInputRef.current.dispatchEvent(changeEvent);
+      Array.from(filesToProcess).forEach(file => {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          const imageDataUrl = e.target?.result as string;
+          // Only set preview for the first file or in single upload mode
+          if (!multiUpload || !previewImage) {
+            setPreviewImage(imageDataUrl);
+          }
+          
+          // For now, we'll just pass some mocked recognition data 
+          const recognizedData: ExpenseFormValues & { 
+            receiptImage?: string; 
+            receiptThumbnail?: string 
+          } = {
+            description: file.name.split('.')[0] || 'Receipt payment',
+            amount: Math.floor(Math.random() * 1000) + 10,
+            date: new Date(),
+            category: categories.length > 0 ? categories[Math.floor(Math.random() * categories.length)].id : '',
+            isRecurring: false,
+            currency: 'THB',
+            receiptImage: imageDataUrl,
+            receiptThumbnail: imageDataUrl
+          };
+          
+          onExpenseRecognized(recognizedData);
+        };
+        
+        reader.readAsDataURL(file);
+      });
+    } catch (error) {
+      console.error('Error processing dropped files:', error);
+    } finally {
+      setIsUploading(false);
     }
   };
   
@@ -130,7 +182,7 @@ export function ExpenseImageUpload({
         onDragOver={handleDragOver}
         onClick={handleClick}
       >
-        {previewImage ? (
+        {previewImage && !multiUpload ? (
           <div className="w-full flex flex-col items-center">
             <div className="relative w-full max-w-xs mb-4">
               <img 
