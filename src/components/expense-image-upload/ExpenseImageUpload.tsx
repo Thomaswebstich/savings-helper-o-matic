@@ -1,5 +1,4 @@
-
-import { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -9,6 +8,16 @@ import { ExpenseFormValues } from '@/components/expense-form/types';
 import { Upload, Image, Check, X, Plus, Trash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Category } from '@/lib/data';
+import { Currency } from '@/lib/types/currency';
+
+interface PendingExpense {
+  id: string;
+  previewUrl: string;
+  data: ExpenseFormValues;
+  isProcessing: boolean;
+  isApproved: boolean;
+  fileName: string;
+}
 
 interface ExpenseImageUploadProps {
   onExpenseRecognized: (data: ExpenseFormValues) => void;
@@ -27,14 +36,7 @@ export function ExpenseImageUpload({
 }: ExpenseImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [pendingExpenses, setPendingExpenses] = useState<Array<{
-    id: string;
-    previewUrl: string;
-    data: ExpenseFormValues;
-    isProcessing: boolean;
-    isApproved: boolean;
-    fileName: string;
-  }>>([]);
+  const [pendingExpenses, setPendingExpenses] = useState<PendingExpense[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [processingQueue, setProcessingQueue] = useState<boolean>(false);
 
@@ -91,9 +93,8 @@ export function ExpenseImageUpload({
     }
   };
 
-  // Add files to processing queue
   const addFilesToQueue = (files: File[]) => {
-    const newPendingExpenses = files.map(file => ({
+    const newPendingExpenses: PendingExpense[] = files.map(file => ({
       id: crypto.randomUUID(),
       previewUrl: URL.createObjectURL(file),
       data: {
@@ -102,7 +103,7 @@ export function ExpenseImageUpload({
         date: new Date(),
         category: '',
         isRecurring: false,
-        currency: 'THB'
+        currency: 'THB' as Currency
       },
       isProcessing: true,
       isApproved: false,
@@ -111,13 +112,11 @@ export function ExpenseImageUpload({
     
     setPendingExpenses(prev => [...prev, ...newPendingExpenses]);
     
-    // Start processing the queue if not already processing
     if (!processingQueue) {
       processFilesSequentially(files);
     }
   };
 
-  // Process files one by one to avoid race conditions
   const processFilesSequentially = async (files: File[]) => {
     setProcessingQueue(true);
     
@@ -126,16 +125,13 @@ export function ExpenseImageUpload({
       const fileId = pendingExpenses.length + i;
       
       try {
-        // Process each file
         await analyzeImage(file, fileId);
         
-        // Small delay between processing each file to avoid rate-limiting
         if (i < files.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       } catch (error) {
         console.error(`Error processing file ${file.name}:`, error);
-        // Continue with next file even if this one fails
       }
     }
     
@@ -143,7 +139,6 @@ export function ExpenseImageUpload({
   };
 
   const handleImageFile = async (file: File) => {
-    // Check if the file is an image
     if (!file.type.startsWith('image/')) {
       toast({
         title: "Invalid file type",
@@ -153,13 +148,11 @@ export function ExpenseImageUpload({
       return;
     }
 
-    // Create preview
     const previewUrl = URL.createObjectURL(file);
     
     if (multiUpload) {
-      // Add to pending list first
       const pendingIndex = pendingExpenses.length;
-      const newExpense = {
+      const newExpense: PendingExpense = {
         id: crypto.randomUUID(),
         previewUrl, 
         data: {
@@ -168,7 +161,7 @@ export function ExpenseImageUpload({
           date: new Date(),
           category: '',
           isRecurring: false,
-          currency: 'THB'
+          currency: 'THB' as Currency
         },
         isProcessing: true,
         isApproved: false,
@@ -177,10 +170,8 @@ export function ExpenseImageUpload({
       
       setPendingExpenses(prev => [...prev, newExpense]);
       
-      // Process the image
       await analyzeImage(file, pendingExpenses.length);
     } else {
-      // Single upload mode - process immediately
       setIsUploading(true);
       await analyzeImage(file);
     }
@@ -188,11 +179,9 @@ export function ExpenseImageUpload({
 
   const analyzeImage = async (file: File, pendingIndex?: number) => {
     try {
-      // Create form data for the file
       const formData = new FormData();
       formData.append('image', file);
       
-      // Add categories to help with classification
       if (categories.length > 0) {
         const categoriesData = categories.map(cat => ({
           id: cat.id,
@@ -203,7 +192,6 @@ export function ExpenseImageUpload({
 
       console.log("Sending image for analysis...", file.name, file.type, file.size);
 
-      // Call the Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('analyze-expense-image', {
         body: formData,
         headers: {
@@ -218,35 +206,28 @@ export function ExpenseImageUpload({
 
       console.log("Analysis response:", data);
 
-      // Process the recognized data
       if (data?.data) {
         const { amount, currency, date, vendor, category, description } = data.data;
         
-        // Create an expense form values object with all required fields
         const expenseValues: ExpenseFormValues = {
           description: description || vendor || 'Expense from receipt',
           amount: parseFloat(amount) || 0,
           date: date ? new Date(date) : new Date(),
-          // Try to map the category from OpenAI to one in our list
           category: findMatchingCategory(category),
           isRecurring: false,
-          currency: (currency as any) || 'THB',
+          currency: (currency as Currency) || ('THB' as Currency),
         };
 
         if (multiUpload && pendingIndex !== undefined) {
-          // Update the pending expense - find by index rather than directly using the index
           setPendingExpenses(prev => {
-            if (pendingIndex >= prev.length) {
-              console.error("Pending index out of bounds:", pendingIndex, prev.length);
-              return prev;
-            }
-            
             const updated = [...prev];
-            updated[pendingIndex] = {
-              ...updated[pendingIndex],
-              data: expenseValues,
-              isProcessing: false
-            };
+            if (pendingIndex < updated.length) {
+              updated[pendingIndex] = {
+                ...updated[pendingIndex],
+                data: expenseValues,
+                isProcessing: false
+              };
+            }
             return updated;
           });
           
@@ -255,7 +236,6 @@ export function ExpenseImageUpload({
             description: `Analysis complete for ${file.name}`,
           });
         } else {
-          // Single upload mode - call callback directly
           toast({
             title: "Receipt analyzed",
             description: "We've extracted the expense details from your receipt",
@@ -269,14 +249,9 @@ export function ExpenseImageUpload({
       console.error('Error analyzing image:', error);
       
       if (multiUpload && pendingIndex !== undefined) {
-        // Update the pending expense to show error - find by index
         setPendingExpenses(prev => {
-          if (pendingIndex >= prev.length) {
-            return prev;
-          }
-          
           const updated = [...prev];
-          if (updated[pendingIndex]) {
+          if (pendingIndex < updated.length) {
             updated[pendingIndex].isProcessing = false;
           }
           return updated;
@@ -295,21 +270,17 @@ export function ExpenseImageUpload({
     }
   };
 
-  // Helper function to find matching category from our list
   const findMatchingCategory = (aiCategory: string): string => {
     if (!aiCategory || categories.length === 0) return '';
     
-    // Direct ID match (if OpenAI returned one of our IDs)
     const directMatch = categories.find(c => c.id === aiCategory);
     if (directMatch) return directMatch.id;
     
-    // Name match (if OpenAI returned a category name)
     const nameMatch = categories.find(c => 
       c.name.toLowerCase() === aiCategory.toLowerCase()
     );
     if (nameMatch) return nameMatch.id;
     
-    // Fuzzy match (if OpenAI returned something similar)
     const fuzzyMatch = categories.find(c => 
       c.name.toLowerCase().includes(aiCategory.toLowerCase()) || 
       aiCategory.toLowerCase().includes(c.name.toLowerCase())
@@ -326,7 +297,6 @@ export function ExpenseImageUpload({
   };
 
   const handleCancel = () => {
-    // Clean up object URLs to prevent memory leaks
     pendingExpenses.forEach(expense => {
       URL.revokeObjectURL(expense.previewUrl);
     });
@@ -341,7 +311,6 @@ export function ExpenseImageUpload({
     if (!expense.isProcessing) {
       onExpenseRecognized(expense.data);
       
-      // Mark as approved
       setPendingExpenses(prev => {
         const updated = [...prev];
         updated[expenseIndex] = {
@@ -356,7 +325,6 @@ export function ExpenseImageUpload({
   const handleExpenseDelete = (expenseId: string) => {
     const expenseToDelete = pendingExpenses.find(e => e.id === expenseId);
     if (expenseToDelete) {
-      // Clean up object URL
       URL.revokeObjectURL(expenseToDelete.previewUrl);
     }
     
@@ -364,7 +332,6 @@ export function ExpenseImageUpload({
   };
 
   const clearApprovedExpenses = () => {
-    // Clean up object URLs for approved expenses
     pendingExpenses.filter(exp => exp.isApproved).forEach(expense => {
       URL.revokeObjectURL(expense.previewUrl);
     });
@@ -372,24 +339,19 @@ export function ExpenseImageUpload({
     setPendingExpenses(prev => prev.filter(exp => !exp.isApproved));
   };
 
-  // Cleanup pending list - remove approved items if all are approved
-  if (pendingExpenses.length > 0 && pendingExpenses.every(exp => exp.isApproved)) {
-    setTimeout(() => {
-      handleCancel(); // Use handleCancel to properly clean up object URLs
-    }, 1000);
-  }
+  useEffect(() => {
+    if (pendingExpenses.length > 0 && pendingExpenses.every(exp => exp.isApproved)) {
+      setTimeout(() => {
+        handleCancel();
+      }, 1000);
+    }
+  }, [pendingExpenses]);
 
-  // Clean up object URLs when component unmounts
-  const cleanupObjectUrls = () => {
-    pendingExpenses.forEach(expense => {
-      URL.revokeObjectURL(expense.previewUrl);
-    });
-  };
-
-  // Add cleanup for unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
-      cleanupObjectUrls();
+      pendingExpenses.forEach(expense => {
+        URL.revokeObjectURL(expense.previewUrl);
+      });
     };
   }, []);
 
@@ -456,7 +418,6 @@ export function ExpenseImageUpload({
             )}
           </div>
 
-          {/* Pending receipts list (for multi-upload mode) */}
           {multiUpload && pendingExpenses.length > 0 && (
             <>
               <div className="text-sm font-medium mt-2 flex justify-between items-center">
