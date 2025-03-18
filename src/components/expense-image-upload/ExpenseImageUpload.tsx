@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ExpenseFormValues } from '@/components/expense-form/types';
-import { Upload, Image, Check, X, Plus, Trash } from 'lucide-react';
+import { Upload, Image as ImageIcon, Check, X, Plus, Trash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Category } from '@/lib/data';
 import { Currency } from '@/lib/types/currency';
@@ -90,7 +91,7 @@ export function ExpenseImageUpload({
 
   const createThumbnail = (imgUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const img = new Image();
+      const img = document.createElement('img');
       img.crossOrigin = "Anonymous";
       img.onload = () => {
         const canvas = document.createElement('canvas');
