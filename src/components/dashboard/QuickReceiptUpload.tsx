@@ -5,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { ExpenseImageUpload } from '@/components/expense-image-upload/ExpenseImageUpload';
 import { ExpenseFormValues } from '@/components/expense-form/types';
 import { Category, Expense } from '@/lib/data';
-import { v4 as uuidv4 } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
 interface QuickReceiptUploadProps {
@@ -22,7 +22,7 @@ export function QuickReceiptUpload({
   const handleExpenseRecognized = (data: ExpenseFormValues) => {
     // Create a new expense object from the recognized data
     const newExpense: Expense = {
-      id: uuidv4(),
+      id: crypto.randomUUID(), // Use built-in randomUUID instead of v4
       description: data.description,
       amount: data.amount,
       date: data.date,
@@ -30,8 +30,8 @@ export function QuickReceiptUpload({
       isRecurring: data.isRecurring,
       recurrenceInterval: data.recurrenceInterval,
       stopDate: data.stopDate,
-      currency: data.currency,
-      createdAt: new Date()
+      currency: data.currency
+      // Remove createdAt as it's not in the Expense type
     };
 
     // Add the expense
