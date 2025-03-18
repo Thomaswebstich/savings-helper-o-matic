@@ -27,3 +27,4 @@ site_url = "http://localhost:3000"
 
 [inbucket]
 enabled = true
+

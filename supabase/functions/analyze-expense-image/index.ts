@@ -16,15 +16,19 @@ serve(async (req) => {
   }
 
   try {
+    // Get the form data
     const formData = await req.formData();
     const imageFile = formData.get('image');
     
     if (!imageFile || !(imageFile instanceof File)) {
+      console.error('No image provided or invalid file type');
       return new Response(
         JSON.stringify({ error: 'No image provided or invalid file' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log(`Processing image: ${imageFile.name}, type: ${imageFile.type}, size: ${imageFile.size} bytes`);
 
     // Convert the image to base64
     const imageBytes = await imageFile.arrayBuffer();
@@ -73,12 +77,16 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      console.error('OpenAI API error:', await response.text());
-      throw new Error('Failed to analyze image with OpenAI');
+      const errorText = await response.text();
+      console.error('OpenAI API error:', errorText);
+      throw new Error(`Failed to analyze image with OpenAI: ${response.status} ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('OpenAI response received:', JSON.stringify(data));
+    
     const content = data.choices[0].message.content;
+    console.log('Content from OpenAI:', content);
     
     // Try to extract valid JSON from the response
     let parsedData;
@@ -95,8 +103,10 @@ serve(async (req) => {
           parsedData[field] = null; // Ensure all required fields exist
         }
       }
+      
+      console.log('Successfully parsed data:', JSON.stringify(parsedData));
     } catch (error) {
-      console.error('Failed to parse OpenAI response:', error);
+      console.error('Failed to parse OpenAI response:', error, 'Content was:', content);
       throw new Error('Failed to parse the response from the AI');
     }
 

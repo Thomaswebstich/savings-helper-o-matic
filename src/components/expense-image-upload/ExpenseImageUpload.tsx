@@ -70,6 +70,8 @@ export function ExpenseImageUpload({ onExpenseRecognized, disabled = false }: Ex
       const formData = new FormData();
       formData.append('image', file);
 
+      console.log("Sending image for analysis...", file.name, file.type, file.size);
+
       // Call the Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('analyze-expense-image', {
         body: formData,
@@ -79,8 +81,11 @@ export function ExpenseImageUpload({ onExpenseRecognized, disabled = false }: Ex
       });
 
       if (error) {
+        console.error("Error analyzing image:", error);
         throw error;
       }
+
+      console.log("Analysis response:", data);
 
       // Process the recognized data
       if (data?.data) {
