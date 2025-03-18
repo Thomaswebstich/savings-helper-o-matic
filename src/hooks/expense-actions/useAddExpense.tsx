@@ -1,106 +1,52 @@
 
-import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Expense, Category, Currency } from '@/lib/data';
-import { ExpenseFormValues } from '@/components/expense-form/types';
+import { Expense } from '@/lib/data';
 import { toast } from '@/hooks/use-toast';
 
 interface UseAddExpenseProps {
   expenses: Expense[];
   setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
-  categories: Category[];
+  onAfterAction?: () => void;
 }
 
-export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpenseProps) {
-  const handleAddExpense = async (data: ExpenseFormValues & { 
-    receiptImage?: string, 
-    receiptThumbnail?: string 
-  }) => {
-    console.log("Adding new expense with form data:", data);
-    
-    const categoryId = data.category;
-    
-    let categoryName = '';
-    if (categoryId) {
-      const foundCategory = categories.find(c => c.id === categoryId);
-      if (foundCategory) {
-        categoryName = foundCategory.name;
-        console.log(`Found category: ${categoryName} for ID: ${categoryId}`);
-      } else {
-        console.warn(`Could not find category with ID: ${categoryId}`);
-      }
-    }
-    
-    const expenseDate = new Date(data.date);
-    expenseDate.setHours(12, 0, 0, 0);
-    
-    let stopDate = undefined;
-    if (data.stopDate) {
-      stopDate = new Date(data.stopDate);
-      stopDate.setHours(12, 0, 0, 0);
-    }
-    
-    const newExpense: Expense = {
-      id: crypto.randomUUID(),
-      description: data.description,
-      amount: data.amount,
-      date: expenseDate,
-      stopDate: stopDate,
-      categoryId: categoryId,
-      isRecurring: data.isRecurring,
-      recurrenceInterval: data.recurrenceInterval,
-      currency: data.currency,
-      receiptImage: data.receiptImage,
-      receiptThumbnail: data.receiptThumbnail
-    };
-    
-    console.log("Created new expense object:", newExpense);
-    
-    setExpenses(prev => [newExpense, ...prev]);
-    
+export function useAddExpense({ expenses, setExpenses, onAfterAction }: UseAddExpenseProps) {
+  const handleAddExpense = async (newExpense: Expense) => {
     try {
-      const formattedDate = expenseDate.toISOString().split('T')[0];
-      const formattedStopDate = stopDate ? stopDate.toISOString().split('T')[0] : null;
-      
-      console.log("Formatted date for DB:", formattedDate);
-      console.log("Formatted stop date for DB:", formattedStopDate);
-      
-      const dbExpense = {
+      const { error } = await supabase.from('expenses').insert({
         description: newExpense.description,
         amount: newExpense.amount,
-        date: formattedDate,
-        category: categoryName,
-        category_id: categoryId,
+        date: newExpense.date instanceof Date ? newExpense.date.toISOString() : newExpense.date,
+        category: newExpense.category,
+        category_id: newExpense.categoryId,
         is_recurring: newExpense.isRecurring,
         recurrence_interval: newExpense.recurrenceInterval,
-        stop_date: formattedStopDate,
+        stop_date: newExpense.stopDate instanceof Date ? newExpense.stopDate.toISOString() : newExpense.stopDate,
         currency: newExpense.currency,
         receipt_image: newExpense.receiptImage,
         receipt_thumbnail: newExpense.receiptThumbnail
-      };
-      
-      console.log("Preparing to insert expense into database:", dbExpense);
-      
-      const { data: dbData, error } = await supabase
-        .from('expenses')
-        .insert(dbExpense);
-        
+      });
+
       if (error) {
-        console.error('Error details from Supabase:', error);
         throw error;
       }
       
-      console.log("Successfully added expense to database:", dbData);
+      // Optimistically update UI
+      setExpenses([newExpense, ...expenses]);
       
       toast({
         title: "Success",
         description: "Expense added successfully",
       });
+      
+      // Call refresh callback if provided
+      if (onAfterAction) {
+        onAfterAction();
+      }
     } catch (error) {
       console.error('Error adding expense:', error);
       toast({
         title: "Error",
-        description: "Failed to save expense to database, but it's available in your current session",
+        description: "Failed to add expense. Please try again.",
         variant: "destructive"
       });
     }

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ExpenseForm } from '@/components/expense-form';
 import { SettingsManager } from '@/components/SettingsManager';
@@ -25,6 +25,7 @@ export default function Index() {
     setTimeRange,
     categoryData,
     refreshData,
+    refreshExpenses,
     monthlyIncome,
     monthlyData,
     currentMonthData,
@@ -46,7 +47,8 @@ export default function Index() {
   } = useExpenseActions({ 
     expenses, 
     setExpenses, 
-    categories 
+    categories,
+    onAfterAction: refreshExpenses // Add refresh as a callback
   });
   
   const handleCloseSettings = () => {
@@ -57,6 +59,11 @@ export default function Index() {
   const handleTimeRangeChange = (newRange: { monthsBack: number, monthsForward: number }) => {
     setTimeRange(newRange);
   };
+  
+  // Ensure we refresh data when component mounts
+  useEffect(() => {
+    refreshData();
+  }, []);
   
   return (
     <div className="min-h-screen bg-background page-transition">

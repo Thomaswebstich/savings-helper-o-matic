@@ -1,138 +1,60 @@
 
-import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Expense, Category, Currency } from '@/lib/data';
-import { ExpenseFormValues } from '@/components/expense-form/types';
+import { Expense } from '@/lib/data';
 import { toast } from '@/hooks/use-toast';
 
 interface UseEditExpenseProps {
   expenses: Expense[];
   setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
-  categories: Category[];
+  onAfterAction?: () => void;
 }
 
-export function useEditExpense({ expenses, setExpenses, categories }: UseEditExpenseProps) {
-  const [currentExpense, setCurrentExpense] = useState<Expense | null>(null);
-  
-  const handleEditExpense = (expense: Expense) => {
-    console.log("Editing expense:", expense);
-    
-    // Ensure expense dates are Date objects
-    const preparedExpense: Expense = {
-      ...expense,
-      date: expense.date instanceof Date ? expense.date : new Date(expense.date),
-      stopDate: expense.stopDate ? 
-        (expense.stopDate instanceof Date ? expense.stopDate : new Date(expense.stopDate)) 
-        : undefined
-    };
-    
-    // Normalize time to avoid timezone issues
-    preparedExpense.date.setHours(12, 0, 0, 0);
-    if (preparedExpense.stopDate) {
-      preparedExpense.stopDate.setHours(12, 0, 0, 0);
-    }
-    
-    console.log("Setting current expense for editing:", preparedExpense);
-    setCurrentExpense(preparedExpense);
-  };
-  
-  const handleUpdateExpense = async (data: ExpenseFormValues & { 
-    receiptImage?: string; 
-    receiptThumbnail?: string;
-  }) => {
-    if (!currentExpense) {
-      console.error("No expense selected for update");
-      return;
-    }
-    
-    let categoryName = '';
-    const foundCategory = categories.find(c => c.id === data.category);
-    if (foundCategory) {
-      categoryName = foundCategory.name;
-    } else {
-      console.warn("Category not found for id:", data.category);
-    }
-    
-    console.log("Updating expense with categoryId:", data.category, "and name:", categoryName);
-    
-    const updatedDate = new Date(data.date);
-    updatedDate.setHours(12, 0, 0, 0);
-    
-    let updatedStopDate = undefined;
-    if (data.stopDate) {
-      updatedStopDate = new Date(data.stopDate);
-      updatedStopDate.setHours(12, 0, 0, 0);
-    }
-    
-    const updatedExpense: Expense = { 
-      ...currentExpense, 
-      description: data.description,
-      amount: data.amount,
-      date: updatedDate,
-      categoryId: data.category,
-      category: categoryName,
-      isRecurring: data.isRecurring,
-      recurrenceInterval: data.recurrenceInterval,
-      stopDate: updatedStopDate,
-      currency: data.currency,
-      receiptImage: data.receiptImage,
-      receiptThumbnail: data.receiptThumbnail
-    };
-    
-    console.log("Final updated expense object:", updatedExpense);
-    
-    setExpenses(prev => 
-      prev.map(exp => 
-        exp.id === currentExpense.id 
-          ? updatedExpense 
-          : exp
-      )
-    );
-    
+export function useEditExpense({ expenses, setExpenses, onAfterAction }: UseEditExpenseProps) {
+  const handleEditExpense = async (updatedExpense: Expense) => {
     try {
-      const formattedDate = updatedDate.toISOString().split('T')[0];
-      const formattedStopDate = updatedStopDate ? updatedStopDate.toISOString().split('T')[0] : null;
+      const { error } = await supabase.from('expenses').update({
+        description: updatedExpense.description,
+        amount: updatedExpense.amount,
+        date: updatedExpense.date instanceof Date ? updatedExpense.date.toISOString() : updatedExpense.date,
+        category: updatedExpense.category,
+        category_id: updatedExpense.categoryId,
+        is_recurring: updatedExpense.isRecurring,
+        recurrence_interval: updatedExpense.recurrenceInterval,
+        stop_date: updatedExpense.stopDate instanceof Date ? updatedExpense.stopDate.toISOString() : updatedExpense.stopDate,
+        currency: updatedExpense.currency,
+        receipt_image: updatedExpense.receiptImage,
+        receipt_thumbnail: updatedExpense.receiptThumbnail
+      }).eq('id', updatedExpense.id);
+
+      if (error) {
+        throw error;
+      }
       
-      console.log("Formatted date for DB update:", formattedDate);
-      console.log("Formatted stop date for DB update:", formattedStopDate);
+      // Update expenses array with optimistic UI update
+      const updatedExpenses = expenses.map(exp => 
+        exp.id === updatedExpense.id ? updatedExpense : exp
+      );
       
-      const { error } = await supabase
-        .from('expenses')
-        .update({
-          description: data.description,
-          amount: data.amount,
-          date: formattedDate,
-          category: categoryName,
-          category_id: data.category,
-          is_recurring: data.isRecurring,
-          recurrence_interval: data.recurrenceInterval,
-          stop_date: formattedStopDate,
-          currency: data.currency,
-          receipt_image: data.receiptImage,
-          receipt_thumbnail: data.receiptThumbnail
-        })
-        .eq('id', currentExpense.id);
-        
-      if (error) throw error;
+      setExpenses(updatedExpenses);
       
       toast({
         title: "Success",
         description: "Expense updated successfully",
       });
+      
+      // Call refresh callback if provided
+      if (onAfterAction) {
+        onAfterAction();
+      }
     } catch (error) {
       console.error('Error updating expense:', error);
       toast({
         title: "Error",
-        description: "Failed to update expense in database, but it's updated in your current session",
+        description: "Failed to update expense. Please try again.",
         variant: "destructive"
       });
     }
   };
 
-  return { 
-    currentExpense, 
-    setCurrentExpense, 
-    handleEditExpense, 
-    handleUpdateExpense 
-  };
+  return { handleEditExpense };
 }
