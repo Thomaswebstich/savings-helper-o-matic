@@ -57,7 +57,14 @@ export function useExpenseActions({
     setIsFormOpen(true);
   };
   
-  const handleFormSubmit = async (values: ExpenseFormValues) => {
+  const handleFormSubmit = async (values: ExpenseFormValues & {
+    receiptImage?: string;
+    receiptThumbnail?: string;
+  }) => {
+    // Find the category name from the category ID
+    const categoryObj = categories.find(cat => cat.id === values.category);
+    const categoryName = categoryObj?.name || '';
+    
     // Map form values to Expense type
     const expense: Expense = {
       id: currentExpense?.id || crypto.randomUUID(),
@@ -65,7 +72,7 @@ export function useExpenseActions({
       amount: values.amount,
       date: values.date,
       categoryId: values.category, // Map category field to categoryId
-      category: categories.find(cat => cat.id === values.category)?.name || '',
+      category: categoryName, // Set the category name
       isRecurring: values.isRecurring,
       recurrenceInterval: values.recurrenceInterval,
       stopDate: values.stopDate,

@@ -12,11 +12,14 @@ interface UseAddExpenseProps {
 export function useAddExpense({ expenses, setExpenses, onAfterAction }: UseAddExpenseProps) {
   const handleAddExpense = async (newExpense: Expense) => {
     try {
+      // Find the category name if not already included
+      const categoryName = newExpense.category || '';
+      
       const { error } = await supabase.from('expenses').insert({
         description: newExpense.description,
         amount: newExpense.amount,
         date: newExpense.date instanceof Date ? newExpense.date.toISOString() : newExpense.date,
-        category: newExpense.category,
+        category: categoryName, // Ensure category field is populated
         category_id: newExpense.categoryId,
         is_recurring: newExpense.isRecurring,
         recurrence_interval: newExpense.recurrenceInterval,
@@ -27,6 +30,7 @@ export function useAddExpense({ expenses, setExpenses, onAfterAction }: UseAddEx
       });
 
       if (error) {
+        console.error('Error adding expense:', error);
         throw error;
       }
       

@@ -29,13 +29,18 @@ export function useQuickReceiptUpload(
   };
   
   const handleApproveExpense = (expense: PendingExpense) => {
+    // Find category name from the category ID
+    const categoryObject = categories.find(cat => cat.id === expense.category);
+    const categoryName = categoryObject?.name || "Uncategorized";
+    
     // Create a new expense object from the recognized data
     const newExpense: Expense = {
       id: crypto.randomUUID(),
       description: expense.description,
       amount: expense.amount,
       date: expense.date,
-      categoryId: expense.category,
+      categoryId: expense.category, // This is the category ID
+      category: categoryName, // Add the category name
       isRecurring: expense.isRecurring,
       recurrenceInterval: expense.recurrenceInterval,
       stopDate: expense.stopDate,
