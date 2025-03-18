@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { UseImageUploadOptions, UseImageUploadReturn } from './types';
+import { Currency } from '@/lib/types/currency';
 
 export function useImageUpload({
   onExpenseRecognized,
@@ -124,7 +125,7 @@ export function useImageUpload({
           date: recognizedData.date ? new Date(recognizedData.date) : new Date(),
           category: recognizedData.category || (categories.length > 0 ? categories[0].id : ''),
           isRecurring: false,
-          currency: recognizedData.currency || 'THB',
+          currency: (recognizedData.currency || 'THB') as Currency,
           receiptImage: imageDataUrl,
           receiptThumbnail: imageDataUrl
         };
@@ -139,7 +140,7 @@ export function useImageUpload({
           date: new Date(),
           category: categories.length > 0 ? categories[Math.floor(Math.random() * categories.length)].id : '',
           isRecurring: false,
-          currency: 'THB',
+          currency: 'THB' as Currency,
           receiptImage: imageDataUrl,
           receiptThumbnail: imageDataUrl
         };

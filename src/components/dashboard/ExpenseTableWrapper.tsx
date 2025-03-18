@@ -1,8 +1,7 @@
-
 import { Expense, Category } from '@/lib/data';
 import { ExpenseTable } from '@/components/expense-table';
 import { Separator } from '@/components/ui/separator';
-import { QuickReceiptUpload } from '@/components/dashboard/QuickReceiptUpload';
+import { QuickReceiptUpload } from '@/components/dashboard/quick-receipt-upload';
 
 interface ExpenseTableWrapperProps {
   expenses: Expense[];
