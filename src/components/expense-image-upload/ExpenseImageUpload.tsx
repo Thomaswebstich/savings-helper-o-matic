@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,6 +6,7 @@ import { ExpenseFormValues } from '@/components/expense-form/types';
 import { Image, Upload, FileImage } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ExpenseImageUploadProps {
   onExpenseRecognized: (data: ExpenseFormValues & { 
@@ -93,24 +93,21 @@ export function ExpenseImageUpload({
         formData.append('image', file);
         formData.append('categories', JSON.stringify(categories));
         
-        // Call the analyze-expense-image function
-        const response = await fetch('/api/analyze-expense-image', {
-          method: 'POST',
+        // Call the analyze-expense-image function using Supabase client
+        const { data: result, error } = await supabase.functions.invoke('analyze-expense-image', {
           body: formData,
         });
         
-        if (!response.ok) {
-          throw new Error(`Failed to analyze receipt: ${response.statusText}`);
+        if (error) {
+          throw new Error(`Failed to analyze receipt: ${error.message}`);
         }
         
-        const result = await response.json();
-        
-        if (result.error) {
-          throw new Error(result.error);
-        }
-        
-        const recognizedData = result.data;
+        const recognizedData = result?.data;
         console.log('Recognized data:', recognizedData);
+        
+        if (!recognizedData) {
+          throw new Error('No data returned from receipt analysis');
+        }
         
         // Map the recognized data to our form values
         const mappedData: ExpenseFormValues & { 
