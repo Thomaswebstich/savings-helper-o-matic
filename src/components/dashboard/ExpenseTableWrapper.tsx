@@ -34,12 +34,12 @@ export function ExpenseTableWrapper({
           categories={categories} 
           onAddExpense={(expense) => {
             if (typeof onAddExpense === 'function') {
-              // Check if onAddExpense accepts parameters
+              // Check if onAddExpense accepts an expense parameter
               if (onAddExpense.length > 0) {
                 (onAddExpense as (expense: Expense) => void)(expense);
               } else {
-                // If it doesn't, just call it without args
-                (onAddExpense as () => void)();
+                // If it doesn't accept parameters, we can't use it for direct expense adding
+                console.error("onAddExpense function doesn't accept parameters");
               }
             }
           }}

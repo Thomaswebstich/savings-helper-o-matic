@@ -108,7 +108,7 @@ export default function Index() {
             <ExpenseTableWrapper 
               expenses={expenses}
               categories={categories}
-              onAddExpense={openAddExpenseForm}
+              onAddExpense={addExpenseFromReceipt}
               onEditExpense={handleEditExpense}
               onDeleteExpense={handleDeleteExpense}
               monthlyIncome={monthlyIncome}

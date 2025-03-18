@@ -16,7 +16,6 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { formatCurrency } from '@/lib/currency-utils';
 
 interface QuickReceiptUploadProps {
   categories: Category[];
@@ -72,7 +71,7 @@ export function QuickReceiptUpload({
       receiptThumbnail: expense.receiptThumbnail
     };
 
-    // Add the expense
+    // Add the expense directly without opening the form
     onAddExpense(newExpense);
     
     // Remove from pending expenses

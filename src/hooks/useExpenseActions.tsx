@@ -45,31 +45,73 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
   };
 
   // Handler for adding expense directly from receipt upload
-  const addExpenseFromReceipt = async (expense: Expense & { 
-    receiptImage?: string; 
-    receiptThumbnail?: string 
-  }) => {
+  const addExpenseFromReceipt = async (expense: Expense) => {
     console.log("Adding expense from receipt:", expense);
     
-    // Create a form values object from the expense
-    const expenseFormValues: ExpenseFormValues & { 
-      receiptImage?: string; 
-      receiptThumbnail?: string 
-    } = {
-      description: expense.description,
-      amount: expense.amount,
-      date: expense.date,
-      category: expense.categoryId,
-      isRecurring: expense.isRecurring,
-      recurrenceInterval: expense.recurrenceInterval,
-      stopDate: expense.stopDate,
-      currency: expense.currency,
-      receiptImage: expense.receiptImage,
-      receiptThumbnail: expense.receiptThumbnail
-    };
-    
-    // Use the same add expense handler that's used by the form
-    await handleAddExpense(expenseFormValues);
+    try {
+      // Find category name from ID for the database entry
+      const categoryId = expense.categoryId;
+      let categoryName = '';
+      
+      if (categoryId) {
+        const foundCategory = categories.find(c => c.id === categoryId);
+        if (foundCategory) {
+          categoryName = foundCategory.name;
+        }
+      }
+      
+      // Add to local state first
+      setExpenses(prev => [expense, ...prev]);
+      
+      // Then add to database using the useAddExpense hook's logic
+      const expenseDate = expense.date instanceof Date ? expense.date : new Date(expense.date);
+      const stopDate = expense.stopDate instanceof Date ? expense.stopDate : (expense.stopDate ? new Date(expense.stopDate) : undefined);
+      
+      // Format dates for database
+      const formattedDate = expenseDate.toISOString().split('T')[0];
+      const formattedStopDate = stopDate ? stopDate.toISOString().split('T')[0] : null;
+      
+      // Create database entry object
+      const dbExpense = {
+        description: expense.description,
+        amount: expense.amount,
+        date: formattedDate,
+        category: categoryName,
+        category_id: categoryId,
+        is_recurring: expense.isRecurring,
+        recurrence_interval: expense.recurrenceInterval,
+        stop_date: formattedStopDate,
+        currency: expense.currency,
+        receipt_image: expense.receiptImage,
+        receipt_thumbnail: expense.receiptThumbnail
+      };
+      
+      console.log("Adding expense to database:", dbExpense);
+      
+      // Add to database
+      const { data: dbData, error } = await supabase
+        .from('expenses')
+        .insert(dbExpense);
+        
+      if (error) {
+        console.error('Error adding expense from receipt:', error);
+        throw error;
+      }
+      
+      console.log("Successfully added expense from receipt to database");
+      
+      toast({
+        title: "Success",
+        description: "Expense added successfully",
+      });
+    } catch (error) {
+      console.error('Error adding expense from receipt:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save expense to database, but it's available in your current session",
+        variant: "destructive"
+      });
+    }
   };
 
   // The main edit expense handler that opens the form and sets the current expense
