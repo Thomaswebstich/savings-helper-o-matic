@@ -37,7 +37,7 @@ export default function Index() {
     isFormOpen,
     setIsFormOpen,
     currentExpense,
-    handleEditExpense,
+    handleEditExpense, // This should be the handler that opens the form
     handleFormSubmit,
     handleDeleteExpense,
     handleCloseForm

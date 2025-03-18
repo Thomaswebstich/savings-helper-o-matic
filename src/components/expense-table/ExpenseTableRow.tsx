@@ -25,6 +25,23 @@ export function ExpenseTableRow({
   onEditExpense, 
   onDeleteExpense 
 }: ExpenseTableRowProps) {
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onEditExpense) {
+      console.log("Edit button clicked for expense:", expense);
+      onEditExpense(expense);
+    }
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onDeleteExpense) {
+      onDeleteExpense(expense.id);
+    }
+  };
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -60,11 +77,7 @@ export function ExpenseTableRow({
                     variant="ghost" 
                     size="icon" 
                     className="h-6 w-6" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onEditExpense(expense);
-                    }}
+                    onClick={handleEditClick}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                     <span className="sr-only">Edit</span>
@@ -75,11 +88,7 @@ export function ExpenseTableRow({
                     variant="ghost" 
                     size="icon" 
                     className="h-6 w-6 text-destructive" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onDeleteExpense(expense.id);
-                    }}
+                    onClick={handleDeleteClick}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     <span className="sr-only">Delete</span>

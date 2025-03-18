@@ -41,13 +41,20 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
     handleCloseForm();
   };
 
+  // The main edit expense handler that opens the form and sets the current expense
+  const editExpense = (expense: Expense) => {
+    console.log("Edit expense called with:", expense);
+    handleEditExpense(expense); // This sets the currentExpense
+    setIsFormOpen(true); // This opens the form
+  };
+
   return {
     isFormOpen,
     setIsFormOpen,
     currentExpense,
     setCurrentExpense,
     handleAddExpense,
-    handleEditExpense,
+    handleEditExpense: editExpense, // Use our handler that also opens the form
     handleFormSubmit,
     handleDeleteExpense,
     handleCloseForm

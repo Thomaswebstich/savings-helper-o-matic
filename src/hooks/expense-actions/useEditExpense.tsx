@@ -17,6 +17,7 @@ export function useEditExpense({ expenses, setExpenses, categories }: UseEditExp
   const handleEditExpense = (expense: Expense) => {
     console.log("Editing expense:", expense);
     
+    // Ensure expense dates are Date objects
     const preparedExpense: Expense = {
       ...expense,
       date: expense.date instanceof Date ? expense.date : new Date(expense.date),
@@ -25,21 +26,28 @@ export function useEditExpense({ expenses, setExpenses, categories }: UseEditExp
         : undefined
     };
     
+    // Normalize time to avoid timezone issues
     preparedExpense.date.setHours(12, 0, 0, 0);
     if (preparedExpense.stopDate) {
       preparedExpense.stopDate.setHours(12, 0, 0, 0);
     }
     
+    console.log("Setting current expense for editing:", preparedExpense);
     setCurrentExpense(preparedExpense);
   };
   
   const handleUpdateExpense = async (data: ExpenseFormValues) => {
-    if (!currentExpense) return;
+    if (!currentExpense) {
+      console.error("No expense selected for update");
+      return;
+    }
     
     let categoryName = '';
     const foundCategory = categories.find(c => c.id === data.category);
     if (foundCategory) {
       categoryName = foundCategory.name;
+    } else {
+      console.warn("Category not found for id:", data.category);
     }
     
     console.log("Updating expense with categoryId:", data.category, "and name:", categoryName);
