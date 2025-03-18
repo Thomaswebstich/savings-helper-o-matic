@@ -1,9 +1,18 @@
 
 import { z } from 'zod';
-import { Expense, Currency } from '@/lib/data';
+import { Currency } from '@/lib/types/currency';
 
 // Define the form values type
-export type ExpenseFormValues = Omit<Expense, 'id'>;
+export type ExpenseFormValues = {
+  description: string;
+  amount: number;
+  date: Date;
+  category: string;
+  isRecurring: boolean;
+  recurrenceInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  stopDate?: Date;
+  currency: Currency;
+};
 
 // Create a schema for form validation
 export const formSchema = z.object({
