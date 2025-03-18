@@ -10,11 +10,15 @@ import { useExpenseForm } from '@/hooks/expense-actions/useExpenseForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExpenseImageUpload } from '../expense-image-upload/ExpenseImageUpload';
 import { useState } from 'react';
+import { ReceiptImagePreview } from './ReceiptImagePreview';
 
 interface ExpenseFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: ExpenseFormValues) => void;
+  onSubmit: (data: ExpenseFormValues & { 
+    receiptImage?: string;
+    receiptThumbnail?: string;
+  }) => void;
   initialValues?: Expense | null;
   categories: Category[];
 }
@@ -44,6 +48,8 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
     setActiveTab("manual");
   };
 
+  const showReceiptTab = initialValues?.receiptImage || initialValues?.receiptThumbnail;
+
   return (
     <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <SheetContent className="md:max-w-xl w-full overflow-y-auto sm:max-h-[90vh] mx-auto inset-0 h-auto mt-16 mb-16 rounded-t-lg sm:rounded-lg">
@@ -57,9 +63,12 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
         </SheetHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="pt-2">
-          <TabsList className="grid grid-cols-2 mb-4">
+          <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="manual">Manual Entry</TabsTrigger>
             <TabsTrigger value="image">Upload Receipt</TabsTrigger>
+            {showReceiptTab && (
+              <TabsTrigger value="receipt">View Receipt</TabsTrigger>
+            )}
           </TabsList>
           
           <TabsContent value="manual">
@@ -86,7 +95,7 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
               <ExpenseImageUpload 
                 onExpenseRecognized={handleExpenseRecognized}
                 categories={categories}
-                disabled={!!initialValues}
+                initialImage={initialValues?.receiptImage}
               />
               
               <div className="text-sm text-muted-foreground mt-2">
@@ -95,6 +104,20 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
               </div>
             </div>
           </TabsContent>
+          
+          {showReceiptTab && (
+            <TabsContent value="receipt">
+              <ReceiptImagePreview 
+                receiptImage={initialValues?.receiptImage} 
+                receiptThumbnail={initialValues?.receiptThumbnail}
+                onRemoveImage={() => {
+                  form.setValue('receiptImage', undefined);
+                  form.setValue('receiptThumbnail', undefined);
+                  setActiveTab("manual");
+                }}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </SheetContent>
     </Sheet>

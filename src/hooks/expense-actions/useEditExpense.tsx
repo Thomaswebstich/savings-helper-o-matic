@@ -36,7 +36,10 @@ export function useEditExpense({ expenses, setExpenses, categories }: UseEditExp
     setCurrentExpense(preparedExpense);
   };
   
-  const handleUpdateExpense = async (data: ExpenseFormValues) => {
+  const handleUpdateExpense = async (data: ExpenseFormValues & { 
+    receiptImage?: string; 
+    receiptThumbnail?: string;
+  }) => {
     if (!currentExpense) {
       console.error("No expense selected for update");
       return;
@@ -71,7 +74,9 @@ export function useEditExpense({ expenses, setExpenses, categories }: UseEditExp
       isRecurring: data.isRecurring,
       recurrenceInterval: data.recurrenceInterval,
       stopDate: updatedStopDate,
-      currency: data.currency
+      currency: data.currency,
+      receiptImage: data.receiptImage,
+      receiptThumbnail: data.receiptThumbnail
     };
     
     console.log("Final updated expense object:", updatedExpense);
@@ -102,7 +107,9 @@ export function useEditExpense({ expenses, setExpenses, categories }: UseEditExp
           is_recurring: data.isRecurring,
           recurrence_interval: data.recurrenceInterval,
           stop_date: formattedStopDate,
-          currency: data.currency
+          currency: data.currency,
+          receipt_image: data.receiptImage,
+          receipt_thumbnail: data.receiptThumbnail
         })
         .eq('id', currentExpense.id);
         

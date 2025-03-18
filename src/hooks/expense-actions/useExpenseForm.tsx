@@ -7,7 +7,10 @@ import { ExpenseFormValues, formSchema } from '@/components/expense-form/types';
 
 interface UseExpenseFormProps {
   initialValues?: Expense | null;
-  onSubmit: (data: ExpenseFormValues) => void;
+  onSubmit: (data: ExpenseFormValues & { 
+    receiptImage?: string; 
+    receiptThumbnail?: string;
+  }) => void;
   onClose: () => void;
 }
 
@@ -15,7 +18,10 @@ export function useExpenseForm({ initialValues, onSubmit, onClose }: UseExpenseF
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   // Initialize form with react-hook-form
-  const form = useForm<ExpenseFormValues>({
+  const form = useForm<ExpenseFormValues & { 
+    receiptImage?: string; 
+    receiptThumbnail?: string;
+  }>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       description: '',
@@ -23,7 +29,9 @@ export function useExpenseForm({ initialValues, onSubmit, onClose }: UseExpenseF
       date: new Date(),
       category: '',
       isRecurring: false,
-      currency: 'THB'
+      currency: 'THB',
+      receiptImage: undefined,
+      receiptThumbnail: undefined
     }
   });
   
@@ -56,7 +64,9 @@ export function useExpenseForm({ initialValues, onSubmit, onClose }: UseExpenseF
         isRecurring: initialValues.isRecurring || false,
         recurrenceInterval: initialValues.recurrenceInterval,
         stopDate: stopDate,
-        currency: initialValues.currency || 'THB'
+        currency: initialValues.currency || 'THB',
+        receiptImage: initialValues.receiptImage,
+        receiptThumbnail: initialValues.receiptThumbnail
       });
     } else {
       // Reset to defaults if no initial values
@@ -66,13 +76,18 @@ export function useExpenseForm({ initialValues, onSubmit, onClose }: UseExpenseF
         date: new Date(),
         category: '',
         isRecurring: false,
-        currency: 'THB'
+        currency: 'THB',
+        receiptImage: undefined,
+        receiptThumbnail: undefined
       });
     }
   }, [initialValues, form]);
   
   // Handle form submission
-  const handleSubmit = (values: ExpenseFormValues) => {
+  const handleSubmit = (values: ExpenseFormValues & { 
+    receiptImage?: string; 
+    receiptThumbnail?: string;
+  }) => {
     console.log("Form submitting with values:", values);
     
     // Ensure dates are properly formatted with fixed time
@@ -85,7 +100,7 @@ export function useExpenseForm({ initialValues, onSubmit, onClose }: UseExpenseF
       submissionStopDate.setHours(12, 0, 0, 0);
     }
     
-    const submissionValues: ExpenseFormValues = {
+    const submissionValues = {
       ...values,
       date: submissionDate,
       stopDate: submissionStopDate
