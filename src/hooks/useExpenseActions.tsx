@@ -64,8 +64,8 @@ export function useExpenseActions({
       description: values.description,
       amount: values.amount,
       date: values.date,
-      categoryId: values.categoryId,
-      category: categories.find(cat => cat.id === values.categoryId)?.name || '',
+      categoryId: values.category, // Map category field to categoryId
+      category: categories.find(cat => cat.id === values.category)?.name || '',
       isRecurring: values.isRecurring,
       recurrenceInterval: values.recurrenceInterval,
       stopDate: values.stopDate,

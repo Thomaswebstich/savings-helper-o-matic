@@ -24,4 +24,6 @@ export type CategoryTotal = {
   percentage: number;
   budget?: number;
   color: string;
+  count?: number; // Add the missing count property
+  displayOrder?: number; // Add optional display order
 };
