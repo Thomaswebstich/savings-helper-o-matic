@@ -1,3 +1,4 @@
+
 import { Expense, Category, convertCurrency } from '@/lib/data';
 import { format, parse, isWithinInterval, startOfMonth, endOfMonth, isSameMonth, parseISO } from 'date-fns';
 import { MonthGroup, SortConfig } from '../types';
@@ -23,6 +24,7 @@ export const groupExpensesByMonth = (
 ): MonthGroup[] => {
   const groups: Map<string, MonthGroup> = new Map();
   
+  // First, create the groups and add expenses to them
   expenses.forEach(expense => {
     const expenseDate = expense.date instanceof Date ? expense.date : new Date(expense.date);
     const monthKey = format(expenseDate, 'yyyy-MM');
@@ -40,16 +42,25 @@ export const groupExpensesByMonth = (
     
     const group = groups.get(monthKey)!;
     group.expenses.push(expense);
-    
-    // Convert expense amount to THB for consistent calculations
-    const amountInTHB = convertCurrency(expense.amount, expense.currency || "THB", "THB");
-    group.total += amountInTHB;
-    
-    // Track totals by category
-    const categoryId = expense.categoryId || 'uncategorized';
-    const currentCategoryTotal = group.categoryTotals.get(categoryId) || 0;
-    group.categoryTotals.set(categoryId, currentCategoryTotal + amountInTHB);
   });
+  
+  // Then calculate totals and category breakdowns in a separate pass
+  for (const group of groups.values()) {
+    // Reset total to ensure we calculate it correctly
+    group.total = 0;
+    group.categoryTotals.clear();
+    
+    // Calculate total in THB for consistency
+    group.expenses.forEach(expense => {
+      const amountInTHB = convertCurrency(expense.amount, expense.currency || "THB", "THB");
+      group.total += amountInTHB;
+      
+      // Track totals by category
+      const categoryId = expense.categoryId || 'uncategorized';
+      const currentCategoryTotal = group.categoryTotals.get(categoryId) || 0;
+      group.categoryTotals.set(categoryId, currentCategoryTotal + amountInTHB);
+    });
+  }
   
   // Apply sorting to each group's expenses based on the current sort config
   for (const group of groups.values()) {

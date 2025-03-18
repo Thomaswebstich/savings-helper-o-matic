@@ -54,16 +54,15 @@ export function ExpenseMonthGroup({
   incomeSources = []
 }: ExpenseMonthGroupProps) {
   
-  // Calculate income for this specific month
+  // Calculate income for this specific month if income sources are provided
   const monthDate = group.month;
   const monthSpecificIncome = incomeSources && incomeSources.length > 0 
     ? calculateMonthIncomeForDate(incomeSources, monthDate)
     : monthlyIncome;
   
-  // Calculate proper total by converting all expenses to THB for consistency in calculations
-  const convertedTotal = group.expenses.reduce((sum, expense) => {
-    return sum + convertCurrency(expense.amount, expense.currency || "THB", "THB");
-  }, 0);
+  // We're already calculating the total in THB in groupExpensesByMonth
+  // so we don't need to recalculate it here
+  const totalExpenses = group.total;
   
   return (
     <Collapsible 
@@ -75,7 +74,7 @@ export function ExpenseMonthGroup({
         <div className="flex flex-col w-full hover:bg-muted/50 cursor-pointer">
           <ExpenseMonthHeader
             label={group.label}
-            total={convertedTotal}
+            total={totalExpenses}
             expenseCount={group.expenses.length}
             isExpanded={isExpanded}
             income={monthSpecificIncome}
@@ -85,7 +84,7 @@ export function ExpenseMonthGroup({
           {!isExpanded && group.categoryTotals.size > 0 &&
             <ExpenseMonthStackedBar
               categoryTotals={group.categoryTotals}
-              total={convertedTotal}
+              total={totalExpenses}
               categoryMap={categoryMap}
               getCategoryColor={getCategoryColor}
               showAgainstIncome={showAgainstIncome}

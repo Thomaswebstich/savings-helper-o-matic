@@ -19,16 +19,17 @@ export const calculateCategoryTotals = async (
   
   // Calculate total expenses (all converted to THB for consistency)
   const totalExpenses = expenses.reduce((sum, exp) => {
-    const amountInTHB = convertCurrency(exp.amount, exp.currency, "THB");
+    const amountInTHB = convertCurrency(exp.amount, exp.currency || "THB", "THB");
     return sum + amountInTHB;
   }, 0);
   
-  // Initialize category totals
-  const categoryTotals = new Map<string, { 
+  // Initialize category totals mapping with proper structure
+  const categoryTotalsMap = new Map<string, { 
     amount: number, 
     name: string, 
     color: string,
-    count: number
+    count: number,
+    displayOrder?: number
   }>();
   
   // Process each expense
@@ -38,21 +39,22 @@ export const calculateCategoryTotals = async (
     const category = categoryMap.get(expense.categoryId);
     if (!category) return;
     
-    const amountInTHB = convertCurrency(expense.amount, expense.currency, "THB");
+    const amountInTHB = convertCurrency(expense.amount, expense.currency || "THB", "THB");
     
-    if (categoryTotals.has(expense.categoryId)) {
-      const current = categoryTotals.get(expense.categoryId)!;
-      categoryTotals.set(expense.categoryId, { 
+    if (categoryTotalsMap.has(expense.categoryId)) {
+      const current = categoryTotalsMap.get(expense.categoryId)!;
+      categoryTotalsMap.set(expense.categoryId, { 
         ...current,
         amount: current.amount + amountInTHB,
         count: current.count + 1
       });
     } else {
-      categoryTotals.set(expense.categoryId, { 
+      categoryTotalsMap.set(expense.categoryId, { 
         amount: amountInTHB,
         name: category.name,
         color: category.color,
-        count: 1
+        count: 1,
+        displayOrder: category.displayOrder
       });
     }
   });
@@ -60,7 +62,7 @@ export const calculateCategoryTotals = async (
   // Convert to array and calculate percentages
   const result: CategoryTotal[] = [];
   
-  categoryTotals.forEach((value, categoryId) => {
+  categoryTotalsMap.forEach((value, categoryId) => {
     const percentage = totalExpenses > 0 ? (value.amount / totalExpenses) * 100 : 0;
     const budget = budgetMap.get(categoryId);
     
@@ -71,7 +73,8 @@ export const calculateCategoryTotals = async (
       percentage: Number(percentage.toFixed(2)), // Ensure precise percentage value
       budget,
       color: value.color,
-      count: value.count
+      count: value.count,
+      displayOrder: value.displayOrder
     });
   });
   
