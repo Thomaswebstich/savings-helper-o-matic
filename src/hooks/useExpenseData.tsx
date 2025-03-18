@@ -31,11 +31,14 @@ export function useExpenseData() {
             isRecurring: item.is_recurring || false,
             recurrenceInterval: item.recurrence_interval as any,
             stopDate: item.stop_date ? new Date(item.stop_date) : undefined,
-            currency: item.currency as any || 'THB'
+            currency: item.currency as any || 'THB',
+            // We don't store these in the database yet, but we could
+            // receiptImage: item.receipt_image,
+            // receiptThumbnail: item.receipt_thumbnail,
           }));
           
           const sortedExpenses = transformedExpenses.sort((a, b) => 
-            a.date.getTime() - b.date.getTime()
+            b.date.getTime() - a.date.getTime()
           );
           
           setExpenses(sortedExpenses);

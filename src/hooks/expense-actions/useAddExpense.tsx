@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Expense, Category, Currency } from '@/lib/data';
@@ -12,7 +11,7 @@ interface UseAddExpenseProps {
 }
 
 export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpenseProps) {
-  const handleAddExpense = async (data: ExpenseFormValues & { receiptThumbnail?: string }) => {
+  const handleAddExpense = async (data: ExpenseFormValues & { receiptImage?: string, receiptThumbnail?: string }) => {
     console.log("Adding new expense with form data:", data);
     
     const categoryId = data.category;
@@ -43,6 +42,7 @@ export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpen
       date: expenseDate,
       stopDate: stopDate,
       categoryId: categoryId,
+      receiptImage: data.receiptImage,
       receiptThumbnail: data.receiptThumbnail
     };
     
@@ -57,21 +57,23 @@ export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpen
       console.log("Formatted date for DB:", formattedDate);
       console.log("Formatted stop date for DB:", formattedStopDate);
       
+      const dbExpense = {
+        description: newExpense.description,
+        amount: newExpense.amount,
+        date: formattedDate,
+        category: categoryName,
+        category_id: categoryId,
+        is_recurring: newExpense.isRecurring,
+        recurrence_interval: newExpense.recurrenceInterval,
+        stop_date: formattedStopDate,
+        currency: newExpense.currency
+      };
+      
+      console.log("Preparing to insert expense into database:", dbExpense);
+      
       const { data: dbData, error } = await supabase
         .from('expenses')
-        .insert({
-          description: newExpense.description,
-          amount: newExpense.amount,
-          date: formattedDate,
-          category: categoryName,
-          category_id: categoryId,
-          is_recurring: newExpense.isRecurring,
-          recurrence_interval: newExpense.recurrenceInterval,
-          stop_date: formattedStopDate,
-          currency: newExpense.currency
-          // Note: receiptThumbnail is not stored in the database as it's a client-side only feature
-          // We'd need a proper storage solution if we wanted to persist these thumbnails
-        });
+        .insert(dbExpense);
         
       if (error) {
         console.error('Error details from Supabase:', error);

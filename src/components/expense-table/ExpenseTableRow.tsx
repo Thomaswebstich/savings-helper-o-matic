@@ -49,11 +49,16 @@ export function ExpenseTableRow({
           <TableCell className={`font-medium ${expense.isProjection ? 'text-muted-foreground italic' : ''} px-4 py-1 w-2/5`}>
             <div className="flex items-center space-x-2">
               {expense.receiptThumbnail && (
-                <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0">
+                <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0 border border-muted">
                   <img 
                     src={expense.receiptThumbnail} 
-                    alt="Receipt thumbnail" 
+                    alt="Receipt" 
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error("Failed to load receipt thumbnail:", e);
+                      // Hide the broken image
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 </div>
               )}

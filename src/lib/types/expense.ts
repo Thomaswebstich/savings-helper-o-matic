@@ -13,5 +13,6 @@ export type Expense = {
   stopDate?: Date;
   currency: Currency;
   isProjection?: boolean; // Flag to identify projected recurring expenses
+  receiptImage?: string; // URL for the full-size receipt image
   receiptThumbnail?: string; // Thumbnail URL for the receipt image
 };
