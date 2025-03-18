@@ -41,7 +41,9 @@ export const preparePieData = (convertedCategoryData: CategoryTotal[]) => {
       percentage: convertedCategoryData
         .slice(5)
         .reduce((sum, category) => sum + category.percentage, 0),
-      color: '#94a3b8'
+      color: '#94a3b8',
+      count: convertedCategoryData.slice(5).reduce((sum, category) => sum + category.count, 0), // Add the count property
+      displayOrder: 999 // Add a high display order for "Other" category
     });
   }
   
