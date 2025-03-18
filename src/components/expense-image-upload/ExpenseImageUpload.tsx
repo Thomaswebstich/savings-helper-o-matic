@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,14 +13,14 @@ import { Currency } from '@/lib/types/currency';
 interface PendingExpense {
   id: string;
   previewUrl: string;
-  data: ExpenseFormValues;
+  data: ExpenseFormValues & { receiptThumbnail?: string };
   isProcessing: boolean;
   isApproved: boolean;
   fileName: string;
 }
 
 interface ExpenseImageUploadProps {
-  onExpenseRecognized: (data: ExpenseFormValues) => void;
+  onExpenseRecognized: (data: ExpenseFormValues & { receiptThumbnail?: string }) => void;
   categories?: Category[];
   disabled?: boolean;
   compact?: boolean;
@@ -56,7 +55,6 @@ export function ExpenseImageUpload({
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       if (multiUpload) {
-        // Process multiple files
         const imageFiles = Array.from(e.dataTransfer.files).filter(file => 
           file.type.startsWith('image/')
         );
@@ -65,7 +63,6 @@ export function ExpenseImageUpload({
           addFilesToQueue(imageFiles);
         }
       } else if (e.dataTransfer.files[0]) {
-        // Process single file
         handleImageFile(e.dataTransfer.files[0]);
       }
     }
@@ -74,7 +71,6 @@ export function ExpenseImageUpload({
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       if (multiUpload) {
-        // Process multiple files
         const imageFiles = Array.from(e.target.files).filter(file => 
           file.type.startsWith('image/')
         );
@@ -83,15 +79,42 @@ export function ExpenseImageUpload({
           addFilesToQueue(imageFiles);
         }
       } else if (e.target.files[0]) {
-        // Process single file
         handleImageFile(e.target.files[0]);
       }
     }
     
-    // Reset the file input so the same file can be selected again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const createThumbnail = (imgUrl: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const MAX_WIDTH = 100;
+        const aspectRatio = img.width / img.height;
+        const targetWidth = Math.min(MAX_WIDTH, img.width);
+        const targetHeight = targetWidth / aspectRatio;
+        
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+          const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(thumbnailUrl);
+        } else {
+          reject(new Error('Could not get canvas context'));
+        }
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = imgUrl;
+    });
   };
 
   const addFilesToQueue = (files: File[]) => {
@@ -124,7 +147,6 @@ export function ExpenseImageUpload({
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
-        // Use the fileId to find the index in the pendingExpenses array
         const pendingIndex = pendingExpenses.length + i;
         await analyzeImage(file, pendingIndex);
         
@@ -210,7 +232,7 @@ export function ExpenseImageUpload({
       if (data?.data) {
         const { amount, currency, date, vendor, category, description } = data.data;
         
-        const expenseValues: ExpenseFormValues = {
+        const expenseValues: ExpenseFormValues & { receiptThumbnail?: string } = {
           description: description || vendor || 'Expense from receipt',
           amount: parseFloat(amount) || 0,
           date: date ? new Date(date) : new Date(),
@@ -218,6 +240,28 @@ export function ExpenseImageUpload({
           isRecurring: false,
           currency: (currency as Currency) || ('THB' as Currency),
         };
+
+        let thumbnailUrl = '';
+        if (pendingIndex !== undefined && pendingIndex < pendingExpenses.length) {
+          const expense = pendingExpenses[pendingIndex];
+          if (expense) {
+            try {
+              thumbnailUrl = await createThumbnail(expense.previewUrl);
+              expenseValues.receiptThumbnail = thumbnailUrl;
+            } catch (err) {
+              console.error('Error creating thumbnail:', err);
+            }
+          }
+        } else if (file) {
+          try {
+            const previewUrl = URL.createObjectURL(file);
+            thumbnailUrl = await createThumbnail(previewUrl);
+            expenseValues.receiptThumbnail = thumbnailUrl;
+            URL.revokeObjectURL(previewUrl);
+          } catch (err) {
+            console.error('Error creating thumbnail:', err);
+          }
+        }
 
         if (multiUpload && pendingIndex !== undefined) {
           setPendingExpenses(prev => {
@@ -310,7 +354,6 @@ export function ExpenseImageUpload({
     
     const expense = pendingExpenses[expenseIndex];
     if (!expense.isProcessing) {
-      // Directly call onExpenseRecognized for the expense
       onExpenseRecognized(expense.data);
       
       setPendingExpenses(prev => {

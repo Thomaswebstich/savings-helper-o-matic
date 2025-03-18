@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Expense, Category, Currency } from '@/lib/data';
@@ -11,7 +12,7 @@ interface UseAddExpenseProps {
 }
 
 export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpenseProps) {
-  const handleAddExpense = async (data: ExpenseFormValues) => {
+  const handleAddExpense = async (data: ExpenseFormValues & { receiptThumbnail?: string }) => {
     console.log("Adding new expense with form data:", data);
     
     const categoryId = data.category;
@@ -41,7 +42,8 @@ export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpen
       ...data,
       date: expenseDate,
       stopDate: stopDate,
-      categoryId: categoryId
+      categoryId: categoryId,
+      receiptThumbnail: data.receiptThumbnail
     };
     
     console.log("Created new expense object:", newExpense);
@@ -67,6 +69,8 @@ export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpen
           recurrence_interval: newExpense.recurrenceInterval,
           stop_date: formattedStopDate,
           currency: newExpense.currency
+          // Note: receiptThumbnail is not stored in the database as it's a client-side only feature
+          // We'd need a proper storage solution if we wanted to persist these thumbnails
         });
         
       if (error) {

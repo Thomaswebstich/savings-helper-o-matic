@@ -47,8 +47,19 @@ export function ExpenseTableRow({
       <ContextMenuTrigger asChild>
         <TableRow className={`notion-db-row group ${expense.isProjection ? 'bg-muted/30' : ''} h-8`}>
           <TableCell className={`font-medium ${expense.isProjection ? 'text-muted-foreground italic' : ''} px-4 py-1 w-2/5`}>
-            {expense.description}
-            {expense.isProjection && <span className="ml-2 text-xs text-muted-foreground">(Projected)</span>}
+            <div className="flex items-center space-x-2">
+              {expense.receiptThumbnail && (
+                <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0">
+                  <img 
+                    src={expense.receiptThumbnail} 
+                    alt="Receipt thumbnail" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <span>{expense.description}</span>
+              {expense.isProjection && <span className="ml-2 text-xs text-muted-foreground">(Projected)</span>}
+            </div>
           </TableCell>
           <TableCell className="text-muted-foreground px-4 py-1 w-1/5">
             {formatCurrency(expense.amount, expense.currency)}

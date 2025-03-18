@@ -42,11 +42,11 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
   };
 
   // Handler for adding expense directly from receipt upload
-  const addExpenseFromReceipt = async (expense: Expense) => {
+  const addExpenseFromReceipt = async (expense: Expense & { receiptThumbnail?: string }) => {
     console.log("Adding expense from receipt:", expense);
     
     // Create a form values object from the expense
-    const expenseFormValues: ExpenseFormValues = {
+    const expenseFormValues: ExpenseFormValues & { receiptThumbnail?: string } = {
       description: expense.description,
       amount: expense.amount,
       date: expense.date,
@@ -54,7 +54,8 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
       isRecurring: expense.isRecurring,
       recurrenceInterval: expense.recurrenceInterval,
       stopDate: expense.stopDate,
-      currency: expense.currency
+      currency: expense.currency,
+      receiptThumbnail: expense.receiptThumbnail
     };
     
     // Use the same add expense handler that's used by the form
