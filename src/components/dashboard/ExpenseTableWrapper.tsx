@@ -26,9 +26,13 @@ export function ExpenseTableWrapper({
   // Function to handle adding an expense from receipt
   const handleReceiptAddExpense = (expense: Expense) => {
     if (typeof onAddExpense === 'function') {
-      // Check if onAddExpense accepts an expense parameter (by checking the parameter count)
+      // Check if onAddExpense accepts an expense parameter
       if (onAddExpense.length > 0) {
         (onAddExpense as (expense: Expense) => void)(expense);
+      } else {
+        // If it doesn't accept parameters, we still want to refresh data
+        // So we call it anyway, since it's probably a refresh function
+        (onAddExpense as () => void)();
       }
     }
   };
@@ -36,7 +40,7 @@ export function ExpenseTableWrapper({
   // Function to handle the add expense button click
   const handleAddExpenseClick = () => {
     if (typeof onAddExpense === 'function') {
-      (onAddExpense as any)();
+      (onAddExpense as () => void)();
     }
   };
 

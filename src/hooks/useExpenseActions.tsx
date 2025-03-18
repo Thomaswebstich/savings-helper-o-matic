@@ -101,8 +101,10 @@ export function useExpenseActions({
     resetForm();
   };
   
-  const addExpenseFromReceipt = (expense: Expense) => {
-    return handleAddExpense(expense);
+  const addExpenseFromReceipt = async (expense: Expense) => {
+    // Make sure we're not triggering a page reload
+    // by directly using the handleAddExpense function
+    return await handleAddExpense(expense);
   };
   
   return {
