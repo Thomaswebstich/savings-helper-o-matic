@@ -51,11 +51,12 @@ export function ExpenseTableWrapper({
       <ExpenseTable
         expenses={expenses}
         categories={categories}
-        onAddExpense={onAddExpense && (() => {
-          if (typeof onAddExpense === 'function') {
-            if (onAddExpense.length === 0) {
-              (onAddExpense as () => void)();
-            }
+        onAddExpense={typeof onAddExpense === 'function' && (() => {
+          if (onAddExpense.length === 0) {
+            (onAddExpense as () => void)();
+          } else {
+            // For add expense button we need to call it without parameters
+            (onAddExpense as any)();
           }
         })}
         onEditExpense={onEditExpense}

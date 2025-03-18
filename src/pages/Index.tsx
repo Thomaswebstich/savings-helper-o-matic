@@ -41,16 +41,13 @@ export default function Index() {
     handleFormSubmit,
     handleDeleteExpense,
     handleCloseForm,
-    addExpenseFromReceipt
+    addExpenseFromReceipt,
+    openAddExpenseForm
   } = useExpenseActions({ 
     expenses, 
     setExpenses, 
     categories 
   });
-  
-  const handleOpenAddExpenseForm = () => {
-    setIsFormOpen(true);
-  };
   
   const handleCloseSettings = () => {
     setIsSettingsOpen(false);
@@ -64,7 +61,7 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background page-transition">
       <Navbar 
-        onAddExpense={handleOpenAddExpenseForm}
+        onAddExpense={openAddExpenseForm}
         displayCurrency={displayCurrency}
         onCurrencyChange={setDisplayCurrency}
       />
@@ -105,13 +102,13 @@ export default function Index() {
                 />
               </>
             ) : (
-              <EmptyState onAddExpenseClick={handleOpenAddExpenseForm} />
+              <EmptyState onAddExpenseClick={openAddExpenseForm} />
             )}
             
             <ExpenseTableWrapper 
               expenses={expenses}
               categories={categories}
-              onAddExpense={addExpenseFromReceipt}
+              onAddExpense={openAddExpenseForm}
               onEditExpense={handleEditExpense}
               onDeleteExpense={handleDeleteExpense}
               monthlyIncome={monthlyIncome}

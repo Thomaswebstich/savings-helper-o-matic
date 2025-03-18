@@ -29,7 +29,10 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
     setCurrentExpense(null);
   };
   
-  const handleFormSubmit = async (data: ExpenseFormValues) => {
+  const handleFormSubmit = async (data: ExpenseFormValues & { 
+    receiptImage?: string; 
+    receiptThumbnail?: string;
+  }) => {
     console.log("Form submitted with data:", data);
     
     if (currentExpense) {
@@ -85,6 +88,15 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
     console.log("Current expense after edit button click:", expense);
   };
 
+  // Function to open the Add Expense form (ensure this is actually called from UI)
+  const openAddExpenseForm = () => {
+    console.log("Opening add expense form");
+    // Reset current expense to null to ensure we're in "add" mode
+    setCurrentExpense(null);
+    // Open the form
+    setIsFormOpen(true);
+  };
+
   return {
     isFormOpen,
     setIsFormOpen,
@@ -95,6 +107,7 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
     handleEditExpense: editExpense, // Use our handler that also opens the form
     handleFormSubmit,
     handleDeleteExpense,
-    handleCloseForm
+    handleCloseForm,
+    openAddExpenseForm // Export the function to open the form
   };
 }
