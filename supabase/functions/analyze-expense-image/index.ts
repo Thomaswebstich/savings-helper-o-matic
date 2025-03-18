@@ -53,6 +53,14 @@ serve(async (req) => {
     `;
 
     console.log("Sending image to OpenAI for analysis...");
+    
+    if (!openAIApiKey || openAIApiKey.trim() === '') {
+      console.error("OpenAI API key is missing or empty");
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key is not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Call OpenAI API
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
