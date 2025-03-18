@@ -19,6 +19,7 @@ serve(async (req) => {
     // Get the form data
     const formData = await req.formData();
     const imageFile = formData.get('image');
+    const categoriesJson = formData.get('categories') || '[]';
     
     if (!imageFile || !(imageFile instanceof File)) {
       console.error('No image provided or invalid file type');
@@ -29,6 +30,16 @@ serve(async (req) => {
     }
 
     console.log(`Processing image: ${imageFile.name}, type: ${imageFile.type}, size: ${imageFile.size} bytes`);
+    
+    // Parse the categories to help with categorization
+    let categories = [];
+    try {
+      categories = JSON.parse(categoriesJson.toString());
+      console.log(`Received ${categories.length} categories for mapping`);
+    } catch (error) {
+      console.error('Error parsing categories:', error);
+      // Continue without categories if parsing fails
+    }
 
     // Convert the image to base64
     const imageBytes = await imageFile.arrayBuffer();
@@ -38,17 +49,28 @@ serve(async (req) => {
     const base64ImageUrl = `data:${imageFile.type};base64,${base64Image}`;
 
     // Create the prompt for expense analysis
-    const prompt = `
+    let prompt = `
       This image shows a receipt or expense document. 
       Analyze it and extract the following information in a structured JSON format:
       1. The total amount spent
       2. The currency (THB, USD, EUR, or others if visible)
       3. The date of the expense (in YYYY-MM-DD format)
       4. The merchant/vendor name
-      5. The expense category (food, transportation, accommodation, etc.)
-      6. A short description of the expense
-
-      Return ONLY a valid JSON object with these keys: amount, currency, date, vendor, category, description. 
+      5. A short description of the expense
+    `;
+    
+    // Add category mapping to the prompt if categories are available
+    if (categories.length > 0) {
+      prompt += `\n6. Assign the expense to one of these specific categories based on the merchant and items purchased:\n`;
+      categories.forEach(cat => {
+        prompt += `   - "${cat.name}" (ID: ${cat.id})\n`;
+      });
+      prompt += `\nChoose the most appropriate category ID from the list above.`;
+    } else {
+      prompt += `\n6. Your best guess for a general expense category (food, transportation, accommodation, etc.)`;
+    }
+    
+    prompt += `\n\nReturn ONLY a valid JSON object with these keys: amount, currency, date, vendor, description, category
       If you cannot determine a value, use null. Do not include explanations outside the JSON.
     `;
 
@@ -105,7 +127,7 @@ serve(async (req) => {
       parsedData = JSON.parse(jsonString);
       
       // Basic validation
-      const requiredFields = ['amount', 'currency', 'date', 'vendor', 'category', 'description'];
+      const requiredFields = ['amount', 'currency', 'date', 'vendor', 'description', 'category'];
       for (const field of requiredFields) {
         if (!Object.prototype.hasOwnProperty.call(parsedData, field)) {
           parsedData[field] = null; // Ensure all required fields exist

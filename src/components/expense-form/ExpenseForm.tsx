@@ -1,3 +1,4 @@
+
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Form } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
@@ -32,10 +33,8 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
     // Update the form values with the recognized data
     form.reset({
       ...recognizedData,
-      // Keep the category ID if it's valid, otherwise leave it blank
-      category: categories.some(c => c.id === recognizedData.category) 
-        ? recognizedData.category 
-        : '',
+      // Leave the category as is since it should already be mapped to a valid category ID
+      // If it's not valid, it will be empty and the user can select it
     });
     
     // Switch to the manual tab to let the user review and adjust
@@ -83,12 +82,13 @@ export function ExpenseForm({ open, onClose, onSubmit, initialValues, categories
             <div className="space-y-4">
               <ExpenseImageUpload 
                 onExpenseRecognized={handleExpenseRecognized}
+                categories={categories}
                 disabled={!!initialValues}
               />
               
               <div className="text-sm text-muted-foreground mt-2">
                 <p>Upload a photo of your receipt to automatically extract expense details.</p>
-                <p className="mt-1">We'll try to identify the amount, date, and description.</p>
+                <p className="mt-1">We'll try to identify the amount, date, description, and category.</p>
               </div>
             </div>
           </TabsContent>
