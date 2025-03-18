@@ -85,6 +85,8 @@ export type Database = {
           description: string
           id: string
           is_recurring: boolean | null
+          receipt_image: string | null
+          receipt_thumbnail: string | null
           recurrence_interval: string | null
           stop_date: string | null
           updated_at: string | null
@@ -99,6 +101,8 @@ export type Database = {
           description: string
           id?: string
           is_recurring?: boolean | null
+          receipt_image?: string | null
+          receipt_thumbnail?: string | null
           recurrence_interval?: string | null
           stop_date?: string | null
           updated_at?: string | null
@@ -113,6 +117,8 @@ export type Database = {
           description?: string
           id?: string
           is_recurring?: boolean | null
+          receipt_image?: string | null
+          receipt_thumbnail?: string | null
           recurrence_interval?: string | null
           stop_date?: string | null
           updated_at?: string | null
