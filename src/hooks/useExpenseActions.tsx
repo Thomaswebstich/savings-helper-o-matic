@@ -21,7 +21,7 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
   
   // Use the extracted hooks
   const { handleAddExpense } = useAddExpense({ expenses, setExpenses, categories });
-  const { handleEditExpense, handleUpdateExpense } = useEditExpense({ expenses, setExpenses, categories });
+  const { handleEditExpense, handleUpdateExpense, setCurrentExpense: setEditExpense } = useEditExpense({ expenses, setExpenses, categories });
   const { handleDeleteExpense } = useDeleteExpense({ expenses, setExpenses });
   
   const handleCloseForm = () => {
@@ -44,8 +44,17 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
   // The main edit expense handler that opens the form and sets the current expense
   const editExpense = (expense: Expense) => {
     console.log("Edit expense called with:", expense);
-    handleEditExpense(expense); // This sets the currentExpense
-    setIsFormOpen(true); // This opens the form
+    
+    // First we need to set the currentExpense in this component
+    setCurrentExpense(expense);
+    
+    // Then we need to set the currentExpense in the useEditExpense hook
+    handleEditExpense(expense);
+    
+    // Finally open the form
+    setIsFormOpen(true);
+    
+    console.log("Current expense after edit button click:", expense);
   };
 
   return {
