@@ -37,10 +37,11 @@ export default function Index() {
     isFormOpen,
     setIsFormOpen,
     currentExpense,
-    handleEditExpense, // This should be the handler that opens the form
+    handleEditExpense,
     handleFormSubmit,
     handleDeleteExpense,
-    handleCloseForm
+    handleCloseForm,
+    addExpenseFromReceipt
   } = useExpenseActions({ 
     expenses, 
     setExpenses, 
@@ -110,7 +111,7 @@ export default function Index() {
             <ExpenseTableWrapper 
               expenses={expenses}
               categories={categories}
-              onAddExpense={handleOpenAddExpenseForm}
+              onAddExpense={addExpenseFromReceipt}
               onEditExpense={handleEditExpense}
               onDeleteExpense={handleDeleteExpense}
               monthlyIncome={monthlyIncome}

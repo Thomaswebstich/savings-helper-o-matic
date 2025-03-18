@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -122,10 +123,10 @@ export function ExpenseImageUpload({
     
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const fileId = pendingExpenses.length + i;
-      
       try {
-        await analyzeImage(file, fileId);
+        // Use the fileId to find the index in the pendingExpenses array
+        const pendingIndex = pendingExpenses.length + i;
+        await analyzeImage(file, pendingIndex);
         
         if (i < files.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -248,7 +249,7 @@ export function ExpenseImageUpload({
     } catch (error) {
       console.error('Error analyzing image:', error);
       
-      if (multiUpload && pendingIndex !== undefined) {
+      if (multiUpload && pendingIndex !== undefined && pendingIndex < pendingExpenses.length) {
         setPendingExpenses(prev => {
           const updated = [...prev];
           if (pendingIndex < updated.length) {
@@ -309,6 +310,7 @@ export function ExpenseImageUpload({
     
     const expense = pendingExpenses[expenseIndex];
     if (!expense.isProcessing) {
+      // Directly call onExpenseRecognized for the expense
       onExpenseRecognized(expense.data);
       
       setPendingExpenses(prev => {
@@ -318,6 +320,11 @@ export function ExpenseImageUpload({
           isApproved: true
         };
         return updated;
+      });
+      
+      toast({
+        title: "Expense added",
+        description: `${expense.data.description} (${expense.data.currency} ${expense.data.amount}) has been added to your expenses`,
       });
     }
   };

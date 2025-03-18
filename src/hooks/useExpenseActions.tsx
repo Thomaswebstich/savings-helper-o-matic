@@ -41,6 +41,26 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
     handleCloseForm();
   };
 
+  // Handler for adding expense directly from receipt upload
+  const addExpenseFromReceipt = async (expense: Expense) => {
+    console.log("Adding expense from receipt:", expense);
+    
+    // Create a form values object from the expense
+    const expenseFormValues: ExpenseFormValues = {
+      description: expense.description,
+      amount: expense.amount,
+      date: expense.date,
+      category: expense.categoryId,
+      isRecurring: expense.isRecurring,
+      recurrenceInterval: expense.recurrenceInterval,
+      stopDate: expense.stopDate,
+      currency: expense.currency
+    };
+    
+    // Use the same add expense handler that's used by the form
+    await handleAddExpense(expenseFormValues);
+  };
+
   // The main edit expense handler that opens the form and sets the current expense
   const editExpense = (expense: Expense) => {
     console.log("Edit expense called with:", expense);
@@ -63,6 +83,7 @@ export function useExpenseActions({ expenses, setExpenses, categories }: UseExpe
     currentExpense,
     setCurrentExpense,
     handleAddExpense,
+    addExpenseFromReceipt,
     handleEditExpense: editExpense, // Use our handler that also opens the form
     handleFormSubmit,
     handleDeleteExpense,

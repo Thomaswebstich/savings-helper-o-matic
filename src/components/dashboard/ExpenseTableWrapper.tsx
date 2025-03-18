@@ -33,12 +33,14 @@ export function ExpenseTableWrapper({
         <QuickReceiptUpload 
           categories={categories} 
           onAddExpense={(expense) => {
-            // Check if onAddExpense accepts an expense parameter
-            if (typeof onAddExpense === 'function' && onAddExpense.length > 0) {
-              (onAddExpense as (expense: Expense) => void)(expense);
-            } else {
-              // If it doesn't expect parameters, call it without arguments
-              (onAddExpense as () => void)();
+            if (typeof onAddExpense === 'function') {
+              // Check if onAddExpense accepts parameters
+              if (onAddExpense.length > 0) {
+                (onAddExpense as (expense: Expense) => void)(expense);
+              } else {
+                // If it doesn't, just call it without args
+                (onAddExpense as () => void)();
+              }
             }
           }}
           className="mb-4"
