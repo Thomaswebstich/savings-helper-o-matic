@@ -1,138 +1,196 @@
 
-import { Expense, Category, formatCurrency } from '@/lib/data';
-import { format, startOfMonth } from 'date-fns';
+import { Expense, Category, convertCurrency } from '@/lib/data';
+import { format, parse, isWithinInterval, startOfMonth, endOfMonth, isSameMonth, parseISO } from 'date-fns';
 import { MonthGroup, SortConfig } from '../types';
 
-/**
- * Filter expenses based on search and category filters
- */
-export function filterExpense(expense: Expense, search: string, selectedCategories: string[]): boolean {
-  // Filter by search term
-  const matchesSearch = 
-    expense.description.toLowerCase().includes(search.toLowerCase()) ||
-    formatCurrency(expense.amount).includes(search);
+export const groupExpensesByMonth = (
+  expenses: Expense[], 
+  sortConfig: SortConfig
+): MonthGroup[] => {
+  const groups: Map<string, MonthGroup> = new Map();
   
-  // Filter by selected categories
-  const matchesCategory = selectedCategories.length === 0 || 
-    selectedCategories.includes(expense.categoryId);
-  
-  return matchesSearch && matchesCategory;
-}
-
-/**
- * Group expenses by month and calculate totals
- */
-export function groupExpensesByMonth(
-  filteredExpenses: Expense[], 
-  sortConfig: SortConfig, 
-  categoryMap: Map<string, Category>
-): MonthGroup[] {
-  const groups: MonthGroup[] = [];
-  const monthMap = new Map<string, MonthGroup>();
-  
-  // Sort expenses by date first
-  const sortedExpenses = [...filteredExpenses].sort((a, b) => {
-    const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-    const dateB = b.date instanceof Date ? b.date : new Date(b.date);
-    return sortConfig.key === 'date' && sortConfig.direction === 'asc' 
-      ? dateA.getTime() - dateB.getTime()
-      : dateB.getTime() - dateA.getTime();
-  });
-  
-  // Group expenses by month
-  sortedExpenses.forEach(expense => {
+  expenses.forEach(expense => {
     const expenseDate = expense.date instanceof Date ? expense.date : new Date(expense.date);
-    const monthStart = startOfMonth(expenseDate);
-    const monthKey = format(monthStart, 'yyyy-MM');
-    const monthLabel = format(monthStart, 'MMMM yyyy');
+    const monthKey = format(expenseDate, 'yyyy-MM');
+    const monthLabel = format(expenseDate, 'MMMM yyyy');
     
-    if (!monthMap.has(monthKey)) {
-      monthMap.set(monthKey, {
-        month: monthStart,
+    if (!groups.has(monthKey)) {
+      groups.set(monthKey, {
+        key: monthKey,
         label: monthLabel,
+        month: startOfMonth(expenseDate),
         expenses: [],
         total: 0,
-        categoryTotals: new Map<string, number>()
+        categoryTotals: new Map()
       });
     }
     
-    const group = monthMap.get(monthKey)!;
+    const group = groups.get(monthKey)!;
     group.expenses.push(expense);
-    group.total += expense.amount;
     
-    // Update category totals
+    // Convert expense amount to THB for consistent calculations
+    const amountInTHB = convertCurrency(expense.amount, expense.currency || "THB", "THB");
+    group.total += amountInTHB;
+    
+    // Track totals by category
     const categoryId = expense.categoryId || 'uncategorized';
-    const currentTotal = group.categoryTotals.get(categoryId) || 0;
-    group.categoryTotals.set(categoryId, currentTotal + expense.amount);
+    const currentCategoryTotal = group.categoryTotals.get(categoryId) || 0;
+    group.categoryTotals.set(categoryId, currentCategoryTotal + amountInTHB);
   });
   
-  // Convert map to array and sort by month (most recent first)
-  Array.from(monthMap.values()).forEach(group => {
-    // Sort expenses within the month group based on sortConfig
-    sortExpensesInGroup(group, sortConfig, categoryMap);
-    groups.push(group);
-  });
+  // Apply sorting to each group's expenses based on the current sort config
+  for (const group of groups.values()) {
+    if (sortConfig.key) {
+      group.expenses.sort((a, b) => {
+        if (sortConfig.key === 'date') {
+          const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+          const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+          return sortConfig.direction === 'asc' 
+            ? dateA.getTime() - dateB.getTime() 
+            : dateB.getTime() - dateA.getTime();
+        } else if (sortConfig.key === 'amount') {
+          // Convert both amounts to THB for fair comparison
+          const amountA = convertCurrency(a.amount, a.currency || "THB", "THB");
+          const amountB = convertCurrency(b.amount, b.currency || "THB", "THB");
+          
+          return sortConfig.direction === 'asc' 
+            ? amountA - amountB 
+            : amountB - amountA;
+        } else {
+          const aValue = a[sortConfig.key] || '';
+          const bValue = b[sortConfig.key] || '';
+          
+          // Handle string comparisons
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return sortConfig.direction === 'asc' 
+              ? aValue.localeCompare(bValue) 
+              : bValue.localeCompare(aValue);
+          }
+          
+          return 0;
+        }
+      });
+    }
+  }
   
-  // Sort month groups by date (most recent first)
-  return groups.sort((a, b) => b.month.getTime() - a.month.getTime());
-}
+  // Convert map to array and sort by date (most recent first)
+  return Array.from(groups.values())
+    .sort((a, b) => {
+      const dateA = parse(a.key, 'yyyy-MM', new Date());
+      const dateB = parse(b.key, 'yyyy-MM', new Date());
+      return dateB.getTime() - dateA.getTime();
+    });
+};
 
-/**
- * Sort expenses within a month group based on sort configuration
- */
-function sortExpensesInGroup(
-  group: MonthGroup, 
-  sortConfig: SortConfig, 
-  categoryMap: Map<string, Category>
-): void {
-  group.expenses.sort((a, b) => {
-    if (sortConfig.key === 'date') {
-      const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-      const dateB = b.date instanceof Date ? b.date : new Date(b.date);
-      return sortConfig.direction === 'asc' 
-        ? dateA.getTime() - dateB.getTime()
-        : dateB.getTime() - dateA.getTime();
+export const filterExpensesByDate = (
+  expenses: Expense[], 
+  dateFilter: { start: Date | null; end: Date | null }
+): Expense[] => {
+  if (!dateFilter.start && !dateFilter.end) {
+    return expenses;
+  }
+  
+  return expenses.filter(expense => {
+    const expenseDate = expense.date instanceof Date ? expense.date : new Date(expense.date);
+    
+    let isWithinRange = true;
+    
+    if (dateFilter.start) {
+      isWithinRange = isWithinRange && expenseDate >= dateFilter.start;
     }
     
-    if (sortConfig.key === 'amount') {
-      return sortConfig.direction === 'asc' 
-        ? a.amount - b.amount
-        : b.amount - a.amount;
+    if (dateFilter.end) {
+      isWithinRange = isWithinRange && expenseDate <= dateFilter.end;
     }
     
-    if (sortConfig.key === 'description') {
-      return sortConfig.direction === 'asc'
-        ? a.description.localeCompare(b.description)
-        : b.description.localeCompare(a.description);
-    }
-    
-    if (sortConfig.key === 'category') {
-      const catA = categoryMap.get(a.categoryId)?.name || '';
-      const catB = categoryMap.get(b.categoryId)?.name || '';
-      return sortConfig.direction === 'asc'
-        ? catA.localeCompare(catB)
-        : catB.localeCompare(catA);
-    }
-    
-    return 0;
+    return isWithinRange;
   });
-}
+};
 
-// Utility for determining category colors
-export function getCategoryColor(categoryId: string): string {
-  const colors = [
-    "#0ea5e9", // blue
-    "#10b981", // green
-    "#f59e0b", // amber
-    "#8b5cf6", // purple
-    "#ec4899", // pink
-    "#94a3b8"  // slate
-  ];
+export const filterExpensesByCategory = (
+  expenses: Expense[], 
+  categoryIds: string[]
+): Expense[] => {
+  if (!categoryIds.length) {
+    return expenses;
+  }
   
-  // Hash the category ID to get consistent color
-  const hash = categoryId.split('').reduce((acc, char) => {
-    return char.charCodeAt(0) + ((acc << 5) - acc);
-  }, 0);
+  return expenses.filter(expense => {
+    const categoryId = expense.categoryId || '';
+    return categoryIds.includes(categoryId);
+  });
+};
+
+export const filterExpensesBySearchTerm = (
+  expenses: Expense[], 
+  searchTerm: string
+): Expense[] => {
+  if (!searchTerm.trim()) {
+    return expenses;
+  }
   
-  return colors[Math.abs(hash) % colors.length];
-}
+  const lowercasedTerm = searchTerm.toLowerCase();
+  
+  return expenses.filter(expense => {
+    const description = expense.description.toLowerCase();
+    const amount = expense.amount.toString();
+    
+    return (
+      description.includes(lowercasedTerm) ||
+      amount.includes(lowercasedTerm)
+    );
+  });
+};
+
+export const filterExpensesByRecurring = (
+  expenses: Expense[], 
+  showRecurring: boolean | null
+): Expense[] => {
+  if (showRecurring === null) {
+    return expenses;
+  }
+  
+  return expenses.filter(expense => {
+    return showRecurring ? expense.isRecurring : !expense.isRecurring;
+  });
+};
+
+export const sortFilteredExpenses = (
+  expenses: Expense[], 
+  sortConfig: SortConfig
+): Expense[] => {
+  const sortedExpenses = [...expenses];
+  
+  if (sortConfig.key) {
+    sortedExpenses.sort((a, b) => {
+      if (sortConfig.key === 'date') {
+        const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+        const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+        return sortConfig.direction === 'asc' 
+          ? dateA.getTime() - dateB.getTime() 
+          : dateB.getTime() - dateA.getTime();
+      } else if (sortConfig.key === 'amount') {
+        // Convert both amounts to THB for fair comparison
+        const amountA = convertCurrency(a.amount, a.currency || "THB", "THB");
+        const amountB = convertCurrency(b.amount, b.currency || "THB", "THB");
+        
+        return sortConfig.direction === 'asc' 
+          ? amountA - amountB 
+          : amountB - amountA;
+      } else {
+        const aValue = a[sortConfig.key] || '';
+        const bValue = b[sortConfig.key] || '';
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc' 
+            ? aValue.localeCompare(bValue) 
+            : bValue.localeCompare(aValue);
+        }
+        
+        return 0;
+      }
+    });
+  }
+  
+  return sortedExpenses;
+};

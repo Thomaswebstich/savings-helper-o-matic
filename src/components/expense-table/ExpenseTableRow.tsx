@@ -50,7 +50,9 @@ export function ExpenseTableRow({
             {expense.description}
             {expense.isProjection && <span className="ml-2 text-xs text-muted-foreground">(Projected)</span>}
           </TableCell>
-          <TableCell className="text-muted-foreground px-4 py-1 w-1/5">{formatCurrency(expense.amount)}</TableCell>
+          <TableCell className="text-muted-foreground px-4 py-1 w-1/5">
+            {formatCurrency(expense.amount, expense.currency)}
+          </TableCell>
           <TableCell className="text-muted-foreground px-4 py-1 w-1/5">
             {expense.date instanceof Date
               ? format(expense.date, 'MMM d, yyyy')

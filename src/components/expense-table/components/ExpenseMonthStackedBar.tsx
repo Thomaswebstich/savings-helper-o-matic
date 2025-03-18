@@ -1,7 +1,7 @@
 
+import { Category, convertCurrency } from '@/lib/data';
 import { StackedBar } from '@/components/ui/stacked-bar';
-import { extractColorFromClass } from '@/components/expense-analysis/utils/category-breakdown-utils';
-import { Category } from '@/lib/data';
+import { Badge } from '@/components/ui/badge';
 
 interface ExpenseMonthStackedBarProps {
   categoryTotals: Map<string, number>;
@@ -26,115 +26,65 @@ export function ExpenseMonthStackedBar({
   monthlyIncome = 0,
   categoryLegendData = []
 }: ExpenseMonthStackedBarProps) {
-  if (categoryTotals.size === 0) return null;
-  
-  // Prepare data for stacked bar chart
-  const getStackedBarData = () => {
-    // If showing against income, use income as the total amount for percentages
-    const totalAmount = showAgainstIncome && monthlyIncome > 0 ? monthlyIncome : total;
-    
-    // Create an array to hold all categories with their values
-    const categoryData = Array.from(categoryTotals.entries()).map(([categoryId, amount]) => {
-      // Calculate percentage based on the total amount for this month
-      const percentage = totalAmount > 0 ? Math.round((amount / totalAmount) * 100) : 0;
-      
-      // Get the category color from the categoryMap first (prioritize taxonomy color)
+  // Prepare data for the stacked bar
+  const segments = [...categoryTotals.entries()]
+    .map(([categoryId, amount]) => {
       const category = categoryMap.get(categoryId);
+      const categoryName = category ? category.name : 'Unknown';
+      const color = getCategoryColor(categoryId);
       
-      // Extract actual color value if it's a Tailwind class
-      let color = getCategoryColor(categoryId);
-      if (category?.color) {
-        color = extractColorFromClass(category.color);
-      }
+      // For the percentage calculation, handle case when showing income ratio
+      const denominator = showAgainstIncome && monthlyIncome > 0 ? monthlyIncome : total;
+      const percentage = denominator > 0 ? (amount / denominator) * 100 : 0;
       
       return {
         id: categoryId,
         value: percentage,
         color: color,
-        category,
-        // Use displayOrder or a large number as fallback
-        displayOrder: category?.displayOrder ?? 999
+        name: categoryName
       };
-    });
-    
-    // If we have categoryLegendData, use its order
-    if (categoryLegendData.length > 0) {
-      // Create a map of positions from the legend data
-      const orderMap = new Map<string, number>();
-      categoryLegendData.forEach((item, index) => {
-        orderMap.set(item.categoryId, index);
-      });
-      
-      // Sort the data according to the legend order
-      return categoryData
-        .sort((a, b) => {
-          const orderA = orderMap.has(a.id) ? orderMap.get(a.id)! : 999;
-          const orderB = orderMap.has(b.id) ? orderMap.get(b.id)! : 999;
-          return orderA - orderB;
-        })
-        .map(item => ({
-          id: item.id,
-          value: item.value,
-          color: item.color
-        }));
-    }
-    
-    // Otherwise sort by displayOrder then by value (highest first)
-    return categoryData
-      .sort((a, b) => {
-        // First sort by displayOrder
-        if (a.displayOrder !== b.displayOrder) {
-          return a.displayOrder - b.displayOrder;
-        }
-        // If displayOrder is the same or undefined, sort by amount
-        return b.value - a.value;
-      })
-      .map(item => ({
-        id: item.id,
-        value: item.value,
-        color: item.color
-      }));
-  };
-
-  const stackedBarData = getStackedBarData();
-
-  // Calculate the unused income segment (if showing against income)
-  let remainderSegment = null;
+    })
+    .sort((a, b) => b.value - a.value);
+  
+  // Calculate remaining percentage when showing against income
+  let remainingSegment = null;
   if (showAgainstIncome && monthlyIncome > 0) {
-    const usedPercentage = stackedBarData.reduce((sum, segment) => sum + segment.value, 0);
-    const remainingPercentage = Math.max(0, 100 - usedPercentage);
-    
-    if (remainingPercentage > 0) {
-      remainderSegment = {
-        id: "remaining-income",
-        value: remainingPercentage,
-        color: "#0ea5e9" // Use sky blue for remaining income (savings)
+    const savingsPercentage = ((monthlyIncome - total) / monthlyIncome) * 100;
+    if (savingsPercentage > 0) {
+      remainingSegment = {
+        id: 'savings',
+        value: savingsPercentage,
+        color: '#10b981', // green-500
+        name: 'Savings'
       };
+      segments.push(remainingSegment);
     }
   }
-
-  // Add the remainder segment to the stacked bar data if it exists
-  const finalBarData = remainderSegment 
-    ? [...stackedBarData, remainderSegment]
-    : stackedBarData;
-
+  
   return (
-    <div className="px-4 pb-2 pt-1">
-      <StackedBar 
-        segments={finalBarData} 
-        height={4}
-        className="mb-1.5"
-      />
-      
-      {/* Optional: Add legend for income/savings if showing against income */}
-      {showAgainstIncome && remainderSegment && (
-        <div className="flex items-center justify-end">
-          <span className="text-xs text-sky-500 flex items-center gap-1">
-            <span className="inline-block w-2 h-2 bg-sky-500 rounded-full"></span>
-            Available Income
-          </span>
-        </div>
-      )}
+    <div className="px-2 pb-2">
+      <StackedBar segments={segments} height={4} />
+      {/* Legend for categories */}
+      <div className="flex flex-wrap gap-1 mt-1 text-xs">
+        {segments.slice(0, 4).map(segment => (
+          <Badge 
+            key={segment.id} 
+            variant="outline" 
+            className="px-1 py-0 text-[10px] border-0"
+          >
+            <span 
+              className="inline-block w-2 h-2 rounded-sm mr-1" 
+              style={{ backgroundColor: segment.color }}
+            />
+            {segment.name} ({Math.round(segment.value)}%)
+          </Badge>
+        ))}
+        {segments.length > 4 && (
+          <Badge variant="outline" className="px-1 py-0 text-[10px] border-0">
+            +{segments.length - 4} more
+          </Badge>
+        )}
+      </div>
     </div>
   );
 }

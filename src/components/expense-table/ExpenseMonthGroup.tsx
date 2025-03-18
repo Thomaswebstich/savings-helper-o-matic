@@ -1,5 +1,5 @@
 
-import { Expense, Category } from '@/lib/data';
+import { Expense, Category, formatCurrency, convertCurrency } from '@/lib/data';
 import { ExpenseTableRow } from './ExpenseTableRow';
 import { ExpenseTableHeader } from './ExpenseTableHeader';
 import { MonthGroup } from './types';
@@ -60,6 +60,11 @@ export function ExpenseMonthGroup({
     ? calculateMonthIncomeForDate(incomeSources, monthDate)
     : monthlyIncome;
   
+  // Calculate proper total by converting all expenses to THB for consistency in calculations
+  const convertedTotal = group.expenses.reduce((sum, expense) => {
+    return sum + convertCurrency(expense.amount, expense.currency || "THB", "THB");
+  }, 0);
+  
   return (
     <Collapsible 
       open={isExpanded}
@@ -70,7 +75,7 @@ export function ExpenseMonthGroup({
         <div className="flex flex-col w-full hover:bg-muted/50 cursor-pointer">
           <ExpenseMonthHeader
             label={group.label}
-            total={group.total}
+            total={convertedTotal}
             expenseCount={group.expenses.length}
             isExpanded={isExpanded}
             income={monthSpecificIncome}
@@ -80,7 +85,7 @@ export function ExpenseMonthGroup({
           {!isExpanded && group.categoryTotals.size > 0 &&
             <ExpenseMonthStackedBar
               categoryTotals={group.categoryTotals}
-              total={group.total}
+              total={convertedTotal}
               categoryMap={categoryMap}
               getCategoryColor={getCategoryColor}
               showAgainstIncome={showAgainstIncome}
