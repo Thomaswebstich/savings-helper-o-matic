@@ -61,6 +61,7 @@ export function ExpenseTableRow({
                     size="icon" 
                     className="h-6 w-6" 
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
                       onEditExpense(expense);
                     }}
@@ -75,6 +76,7 @@ export function ExpenseTableRow({
                     size="icon" 
                     className="h-6 w-6 text-destructive" 
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
                       onDeleteExpense(expense.id);
                     }}
