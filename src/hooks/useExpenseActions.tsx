@@ -8,6 +8,8 @@ import {
   useDeleteExpense,
   useExpenseForm
 } from './expense-actions';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface UseExpenseActionsProps {
   expenses: Expense[];
