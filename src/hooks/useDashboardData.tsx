@@ -9,10 +9,10 @@ import { useCategoryTotals } from './useCategoryTotals';
 
 export function useDashboardData() {
   const [displayCurrency, setDisplayCurrency] = useState<Currency>("THB");
-  const [timeRange, setTimeRange] = useState({ monthsBack: 9, monthsForward: 12 });
+  const [timeRange, setTimeRange] = useState({ monthsBack: 9, monthsForward: 12 }); // Set default to 12 months forward
   
   // Use our specialized hooks
-  const { expenses, setExpenses, isLoading: expensesLoading, refreshExpenses } = useExpenseData();
+  const { expenses, setExpenses, isLoading: expensesLoading } = useExpenseData();
   const { categories, budgets, refreshCategoryData } = useCategoriesData();
   const { incomeSources, monthlyIncome, refreshIncomeData, isLoading: incomeLoading } = useIncomeData(displayCurrency);
   
@@ -36,10 +36,9 @@ export function useDashboardData() {
   // Combine loading states
   const isLoading = expensesLoading || incomeLoading;
 
-  // Enhanced refresh function
+  // Combined refresh function
   const refreshData = async () => {
     await Promise.all([
-      refreshExpenses(),
       refreshCategoryData(),
       refreshIncomeData()
     ]);
@@ -57,7 +56,6 @@ export function useDashboardData() {
     setTimeRange,
     categoryData,
     refreshData,
-    refreshExpenses,
     monthlyIncome,
     monthlyData,
     currentMonthData,

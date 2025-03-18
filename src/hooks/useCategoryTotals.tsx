@@ -8,7 +8,7 @@ export function useCategoryTotals(
   categories: Category[],
   budgets: CategoryBudget[]
 ) {
-  const [categoryData, setCategoryData] = useState<CategoryTotal[]>([]);
+  const [categoryData, setCategoryData] = useState<any[]>([]);
 
   useEffect(() => {
     const updateCategoryData = async () => {
@@ -27,10 +27,10 @@ export function useCategoryTotals(
           categoryOrderMap.set(cat.id, cat.displayOrder ?? 999);
         });
         
-        // Add displayOrder to each category in the data if not already there
+        // Add displayOrder to each category in the data
         const enhancedData = data.map(cat => ({
           ...cat,
-          displayOrder: cat.displayOrder ?? categoryOrderMap.get(cat.categoryId) ?? 999
+          displayOrder: categoryOrderMap.get(cat.categoryId) ?? 999
         }));
         
         // Sort by display order first, then by amount

@@ -24,6 +24,4 @@ export type CategoryTotal = {
   percentage: number;
   budget?: number;
   color: string;
-  count: number; // Number of expenses in this category
-  displayOrder?: number; // Optional display order
 };

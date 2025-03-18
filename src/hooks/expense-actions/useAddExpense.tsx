@@ -1,58 +1,106 @@
 
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Expense } from '@/lib/data';
+import { Expense, Category, Currency } from '@/lib/data';
+import { ExpenseFormValues } from '@/components/expense-form/types';
 import { toast } from '@/hooks/use-toast';
 
 interface UseAddExpenseProps {
   expenses: Expense[];
   setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
-  onAfterAction?: () => void;
+  categories: Category[];
 }
 
-export function useAddExpense({ expenses, setExpenses, onAfterAction }: UseAddExpenseProps) {
-  const handleAddExpense = async (newExpense: Expense) => {
+export function useAddExpense({ expenses, setExpenses, categories }: UseAddExpenseProps) {
+  const handleAddExpense = async (data: ExpenseFormValues & { 
+    receiptImage?: string, 
+    receiptThumbnail?: string 
+  }) => {
+    console.log("Adding new expense with form data:", data);
+    
+    const categoryId = data.category;
+    
+    let categoryName = '';
+    if (categoryId) {
+      const foundCategory = categories.find(c => c.id === categoryId);
+      if (foundCategory) {
+        categoryName = foundCategory.name;
+        console.log(`Found category: ${categoryName} for ID: ${categoryId}`);
+      } else {
+        console.warn(`Could not find category with ID: ${categoryId}`);
+      }
+    }
+    
+    const expenseDate = new Date(data.date);
+    expenseDate.setHours(12, 0, 0, 0);
+    
+    let stopDate = undefined;
+    if (data.stopDate) {
+      stopDate = new Date(data.stopDate);
+      stopDate.setHours(12, 0, 0, 0);
+    }
+    
+    const newExpense: Expense = {
+      id: crypto.randomUUID(),
+      description: data.description,
+      amount: data.amount,
+      date: expenseDate,
+      stopDate: stopDate,
+      categoryId: categoryId,
+      isRecurring: data.isRecurring,
+      recurrenceInterval: data.recurrenceInterval,
+      currency: data.currency,
+      receiptImage: data.receiptImage,
+      receiptThumbnail: data.receiptThumbnail
+    };
+    
+    console.log("Created new expense object:", newExpense);
+    
+    setExpenses(prev => [newExpense, ...prev]);
+    
     try {
-      // Find the category name if not already included
-      const categoryName = newExpense.category || '';
+      const formattedDate = expenseDate.toISOString().split('T')[0];
+      const formattedStopDate = stopDate ? stopDate.toISOString().split('T')[0] : null;
       
-      // Update the UI first (optimistic update)
-      setExpenses(prevExpenses => [newExpense, ...prevExpenses]);
+      console.log("Formatted date for DB:", formattedDate);
+      console.log("Formatted stop date for DB:", formattedStopDate);
       
-      const { error } = await supabase.from('expenses').insert({
+      const dbExpense = {
         description: newExpense.description,
         amount: newExpense.amount,
-        date: newExpense.date instanceof Date ? newExpense.date.toISOString() : newExpense.date,
-        category: categoryName, // Ensure category field is populated
-        category_id: newExpense.categoryId,
+        date: formattedDate,
+        category: categoryName,
+        category_id: categoryId,
         is_recurring: newExpense.isRecurring,
         recurrence_interval: newExpense.recurrenceInterval,
-        stop_date: newExpense.stopDate instanceof Date ? newExpense.stopDate.toISOString() : newExpense.stopDate,
+        stop_date: formattedStopDate,
         currency: newExpense.currency,
         receipt_image: newExpense.receiptImage,
         receipt_thumbnail: newExpense.receiptThumbnail
-      });
-
+      };
+      
+      console.log("Preparing to insert expense into database:", dbExpense);
+      
+      const { data: dbData, error } = await supabase
+        .from('expenses')
+        .insert(dbExpense);
+        
       if (error) {
-        console.error('Error adding expense:', error);
-        // Revert optimistic update on error
-        setExpenses(prevExpenses => prevExpenses.filter(e => e.id !== newExpense.id));
+        console.error('Error details from Supabase:', error);
         throw error;
       }
+      
+      console.log("Successfully added expense to database:", dbData);
       
       toast({
         title: "Success",
         description: "Expense added successfully",
       });
-      
-      // Call refresh callback if provided
-      if (onAfterAction) {
-        onAfterAction();
-      }
     } catch (error) {
       console.error('Error adding expense:', error);
       toast({
         title: "Error",
-        description: "Failed to add expense. Please try again.",
+        description: "Failed to save expense to database, but it's available in your current session",
         variant: "destructive"
       });
     }

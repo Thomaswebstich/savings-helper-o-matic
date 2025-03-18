@@ -7,14 +7,11 @@ export type ExpenseFormValues = {
   description: string;
   amount: number;
   date: Date;
-  category: string; // This is actually the categoryId
+  category: string;
   isRecurring: boolean;
   recurrenceInterval?: 'daily' | 'weekly' | 'monthly' | 'yearly';
   stopDate?: Date;
   currency: Currency;
-  // Add these missing properties
-  receiptImage?: string;
-  receiptThumbnail?: string;
 };
 
 // Create a schema for form validation
@@ -27,6 +24,4 @@ export const formSchema = z.object({
   recurrenceInterval: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
   stopDate: z.date().optional(),
   currency: z.enum(['THB', 'USD', 'EUR'] as [Currency, ...Currency[]]).default('THB'),
-  receiptImage: z.string().optional(),
-  receiptThumbnail: z.string().optional(),
 });

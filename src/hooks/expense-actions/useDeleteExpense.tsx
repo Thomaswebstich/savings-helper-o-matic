@@ -10,22 +10,15 @@ interface UseDeleteExpenseProps {
 
 export function useDeleteExpense({ expenses, setExpenses }: UseDeleteExpenseProps) {
   const handleDeleteExpense = async (id: string) => {
-    // Optimistically remove from UI
     setExpenses(prev => prev.filter(exp => exp.id !== id));
     
     try {
-      // Delete from database
       const { error } = await supabase
         .from('expenses')
         .delete()
         .eq('id', id);
         
-      if (error) {
-        // If there's an error, rollback the UI change
-        console.error('Error deleting expense:', error);
-        setExpenses(expenses); // Restore original state
-        throw error;
-      }
+      if (error) throw error;
       
       toast({
         title: "Success",
@@ -35,7 +28,7 @@ export function useDeleteExpense({ expenses, setExpenses }: UseDeleteExpenseProp
       console.error('Error deleting expense:', error);
       toast({
         title: "Error",
-        description: "Failed to delete expense. Please try again.",
+        description: "Failed to delete expense from database, but it's removed from your current session",
         variant: "destructive"
       });
     }

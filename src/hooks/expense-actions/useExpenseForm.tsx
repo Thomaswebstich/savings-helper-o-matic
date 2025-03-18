@@ -5,9 +5,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Expense } from '@/lib/data';
 import { ExpenseFormValues, formSchema } from '@/components/expense-form/types';
 
-export function useExpenseForm() {
+interface UseExpenseFormProps {
+  initialValues?: Expense | null;
+  onSubmit: (data: ExpenseFormValues & { 
+    receiptImage?: string; 
+    receiptThumbnail?: string;
+  }) => void;
+  onClose: () => void;
+}
+
+export function useExpenseForm({ initialValues, onSubmit, onClose }: UseExpenseFormProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [currentExpense, setCurrentExpense] = useState<Expense | null>(null);
 
   // Initialize form with react-hook-form
   const form = useForm<ExpenseFormValues & { 
@@ -29,66 +37,90 @@ export function useExpenseForm() {
   
   // Reset form when initial values change or when modal opens/closes
   useEffect(() => {
-    if (currentExpense) {
-      console.log("Setting form values with:", currentExpense);
+    if (initialValues) {
+      console.log("Setting form values with:", initialValues);
       
       // Ensure all dates are proper Date objects and adjust for timezone
-      const expenseDate = new Date(currentExpense.date);
+      const expenseDate = new Date(initialValues.date);
       // Set to noon to avoid timezone issues
       expenseDate.setHours(12, 0, 0, 0);
       
       let stopDate = undefined;
-      if (currentExpense.stopDate) {
-        stopDate = new Date(currentExpense.stopDate);
+      if (initialValues.stopDate) {
+        stopDate = new Date(initialValues.stopDate);
         stopDate.setHours(12, 0, 0, 0);
       }
       
       console.log("Prepared date:", expenseDate);
       console.log("Prepared stop date:", stopDate);
-      console.log("Using category value:", currentExpense.categoryId);
+      console.log("Using category value:", initialValues.categoryId);
       
       // Reset the form with prepared values
       form.reset({
-        description: currentExpense.description,
-        amount: currentExpense.amount,
+        description: initialValues.description,
+        amount: initialValues.amount,
         date: expenseDate,
-        category: currentExpense.categoryId,
-        isRecurring: currentExpense.isRecurring || false,
-        recurrenceInterval: currentExpense.recurrenceInterval,
+        category: initialValues.categoryId,
+        isRecurring: initialValues.isRecurring || false,
+        recurrenceInterval: initialValues.recurrenceInterval,
         stopDate: stopDate,
-        currency: currentExpense.currency || 'THB',
-        receiptImage: currentExpense.receiptImage,
-        receiptThumbnail: currentExpense.receiptThumbnail
+        currency: initialValues.currency || 'THB',
+        receiptImage: initialValues.receiptImage,
+        receiptThumbnail: initialValues.receiptThumbnail
+      });
+    } else {
+      // Reset to defaults if no initial values
+      form.reset({
+        description: '',
+        amount: 0,
+        date: new Date(),
+        category: '',
+        isRecurring: false,
+        currency: 'THB',
+        receiptImage: undefined,
+        receiptThumbnail: undefined
       });
     }
-  }, [currentExpense, form]);
+  }, [initialValues, form]);
   
-  const resetForm = () => {
-    setCurrentExpense(null);
-    form.reset({
-      description: '',
-      amount: 0,
-      date: new Date(),
-      category: '',
-      isRecurring: false,
-      currency: 'THB',
-      receiptImage: undefined,
-      receiptThumbnail: undefined
-    });
+  // Handle form submission
+  const handleSubmit = (values: ExpenseFormValues & { 
+    receiptImage?: string; 
+    receiptThumbnail?: string;
+  }) => {
+    console.log("Form submitting with values:", values);
+    
+    // Ensure dates are properly formatted with fixed time
+    const submissionDate = new Date(values.date);
+    submissionDate.setHours(12, 0, 0, 0);
+    
+    let submissionStopDate = undefined;
+    if (values.stopDate) {
+      submissionStopDate = new Date(values.stopDate);
+      submissionStopDate.setHours(12, 0, 0, 0);
+    }
+    
+    const submissionValues = {
+      ...values,
+      date: submissionDate,
+      stopDate: submissionStopDate
+    };
+    
+    console.log("Formatted submission values:", submissionValues);
+    onSubmit(submissionValues);
+    onClose();
   };
 
   const handleCloseForm = () => {
     setIsFormOpen(false);
-    resetForm();
+    onClose();
   };
 
   return {
     isFormOpen,
     setIsFormOpen,
-    currentExpense,
-    setCurrentExpense,
     handleCloseForm,
     form,
-    resetForm
+    handleSubmit
   };
 }

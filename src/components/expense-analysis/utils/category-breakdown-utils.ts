@@ -9,7 +9,6 @@ interface CategoryInfo {
   count: number;
   color?: string;
   percentage?: number;
-  displayOrder?: number;
 }
 
 export interface CategoryBreakdownResult {
@@ -26,7 +25,6 @@ export interface CategoryBreakdownResult {
 interface CategoryObject {
   name?: string;
   color?: string;
-  displayOrder?: number;
   [key: string]: any;
 }
 
@@ -62,7 +60,7 @@ export function extractColorFromClass(colorClass: string): string {
   return colorMap[baseColorClass] || '#0ea5e9'; // Default to blue if not found
 }
 
-// Calculate category data breakdown with correct percentage calculation
+// Calculate category data breakdown
 export function calculateCategoryBreakdown(
   filteredExpenses: Expense[], 
   currency: Currency
@@ -77,22 +75,11 @@ export function calculateCategoryBreakdown(
   
   const categoryMap = new Map<string, CategoryInfo>();
   
-  // First, get all expenses converted to the specified currency
-  const normalizedExpenses = filteredExpenses.map(expense => ({
-    ...expense,
-    normalizedAmount: convertCurrency(expense.amount, expense.currency || "THB", currency)
-  }));
-  
-  // Calculate total spending across all expenses
-  const totalSpending = normalizedExpenses.reduce((sum, expense) => 
-    sum + expense.normalizedAmount, 0);
-  
   // Group by category
-  normalizedExpenses.forEach(expense => {
+  filteredExpenses.forEach(expense => {
     const categoryId = expense.categoryId || 'uncategorized';
     let categoryName = 'Uncategorized';
     let color: string | undefined;
-    let displayOrder: number | undefined;
     
     // Extract information from category object if available
     if (expense.category && typeof expense.category === 'object') {
@@ -107,10 +94,6 @@ export function calculateCategoryBreakdown(
         // Extract the actual color from the Tailwind class
         color = extractColorFromClass(categoryObj.color);
       }
-      
-      if (categoryObj.displayOrder !== undefined) {
-        displayOrder = categoryObj.displayOrder;
-      }
     } else if (typeof expense.category === 'string') {
       categoryName = expense.category;
     }
@@ -121,13 +104,12 @@ export function calculateCategoryBreakdown(
         name: categoryName,
         total: 0,
         count: 0,
-        color,
-        displayOrder
+        color
       });
     }
     
     const entry = categoryMap.get(categoryId)!;
-    entry.total += expense.normalizedAmount;
+    entry.total += convertCurrency(expense.amount, expense.currency || "THB", currency);
     entry.count += 1;
   });
   
@@ -141,6 +123,10 @@ export function calculateCategoryBreakdown(
   const weeksDiff = Math.max(0.143, differenceInWeeks(maxDate, minDate) + 0.143); // +0.143 (1/7) to avoid division by zero
   const monthsDiff = Math.max(0.033, differenceInMonths(maxDate, minDate) + 0.033); // +0.033 (1/30) to avoid division by zero
   
+  // Calculate total for percentages
+  const totalSpending = filteredExpenses.reduce((sum, expense) => 
+    sum + convertCurrency(expense.amount, expense.currency || "THB", currency), 0);
+  
   // Calculate time period stats for correct averages
   const timePeriodStats = {
     days: daysDiff,
@@ -148,20 +134,13 @@ export function calculateCategoryBreakdown(
     months: monthsDiff
   };
   
-  // Calculate percentages based on total spending
+  // Sort by amount
   const categoryData = Array.from(categoryMap.values())
     .map(category => ({
       ...category,
-      percentage: totalSpending > 0 ? (category.total / totalSpending) * 100 : 0
+      percentage: (category.total / totalSpending) * 100
     }))
-    .sort((a, b) => {
-      // First sort by display order if available
-      if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
-        return a.displayOrder - b.displayOrder;
-      }
-      // Then by amount
-      return b.total - a.total;
-    });
+    .sort((a, b) => b.total - a.total);
     
   return { 
     categoryData, 

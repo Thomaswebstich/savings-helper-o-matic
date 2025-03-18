@@ -2,7 +2,7 @@
 import { Expense, Category } from '@/lib/data';
 import { ExpenseTable } from '@/components/expense-table';
 import { Separator } from '@/components/ui/separator';
-import { QuickReceiptUpload } from '@/components/dashboard/quick-receipt-upload';
+import { QuickReceiptUpload } from '@/components/dashboard/QuickReceiptUpload';
 
 interface ExpenseTableWrapperProps {
   expenses: Expense[];
@@ -23,27 +23,6 @@ export function ExpenseTableWrapper({
   monthlyIncome,
   incomeSources = []
 }: ExpenseTableWrapperProps) {
-  // Function to handle adding an expense from receipt
-  const handleReceiptAddExpense = (expense: Expense) => {
-    if (typeof onAddExpense === 'function') {
-      // Check if onAddExpense accepts an expense parameter
-      if (onAddExpense.length > 0) {
-        (onAddExpense as (expense: Expense) => void)(expense);
-      } else {
-        // If it doesn't accept parameters, we still want to refresh data
-        // So we call it anyway, since it's probably a refresh function
-        (onAddExpense as () => void)();
-      }
-    }
-  };
-
-  // Function to handle the add expense button click
-  const handleAddExpenseClick = () => {
-    if (typeof onAddExpense === 'function') {
-      (onAddExpense as () => void)();
-    }
-  };
-
   return (
     <div className="mt-5 space-y-4">
       <h2 className="font-semibold text-lg">Transaction History</h2>
@@ -53,7 +32,17 @@ export function ExpenseTableWrapper({
       {onAddExpense && (
         <QuickReceiptUpload 
           categories={categories} 
-          onAddExpense={handleReceiptAddExpense}
+          onAddExpense={(expense) => {
+            if (typeof onAddExpense === 'function') {
+              // Check if onAddExpense accepts an expense parameter
+              if (onAddExpense.length > 0) {
+                (onAddExpense as (expense: Expense) => void)(expense);
+              } else {
+                // If it doesn't accept parameters, we can't use it for direct expense adding
+                console.error("onAddExpense function doesn't accept parameters");
+              }
+            }
+          }}
           className="mb-4"
         />
       )}
@@ -62,7 +51,14 @@ export function ExpenseTableWrapper({
       <ExpenseTable
         expenses={expenses}
         categories={categories}
-        onAddExpense={onAddExpense ? handleAddExpenseClick : undefined}
+        onAddExpense={typeof onAddExpense === 'function' && (() => {
+          if (onAddExpense.length === 0) {
+            (onAddExpense as () => void)();
+          } else {
+            // For add expense button we need to call it without parameters
+            (onAddExpense as any)();
+          }
+        })}
         onEditExpense={onEditExpense}
         onDeleteExpense={onDeleteExpense}
         monthlyIncome={monthlyIncome}

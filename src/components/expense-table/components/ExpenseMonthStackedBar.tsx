@@ -26,31 +26,29 @@ export function ExpenseMonthStackedBar({
   monthlyIncome = 0,
   categoryLegendData = []
 }: ExpenseMonthStackedBarProps) {
-  // Ignore categories with 0 or negative amounts
-  const validCategoryEntries = [...categoryTotals.entries()]
-    .filter(([_, amount]) => amount > 0);
-  
   // Prepare data for the stacked bar
-  const segments = validCategoryEntries.map(([categoryId, amount]) => {
-    const category = categoryMap.get(categoryId);
-    const categoryName = category ? category.name : 'Unknown';
-    const color = getCategoryColor(categoryId);
-    
-    // For the percentage calculation, handle case when showing income ratio
-    const denominator = showAgainstIncome && monthlyIncome > 0 ? monthlyIncome : total;
-    const percentage = denominator > 0 ? (amount / denominator) * 100 : 0;
-    
-    return {
-      id: categoryId,
-      value: percentage,
-      color: color,
-      name: categoryName
-    };
-  }).sort((a, b) => b.value - a.value);
+  const segments = [...categoryTotals.entries()]
+    .map(([categoryId, amount]) => {
+      const category = categoryMap.get(categoryId);
+      const categoryName = category ? category.name : 'Unknown';
+      const color = getCategoryColor(categoryId);
+      
+      // For the percentage calculation, handle case when showing income ratio
+      const denominator = showAgainstIncome && monthlyIncome > 0 ? monthlyIncome : total;
+      const percentage = denominator > 0 ? (amount / denominator) * 100 : 0;
+      
+      return {
+        id: categoryId,
+        value: percentage,
+        color: color,
+        name: categoryName
+      };
+    })
+    .sort((a, b) => b.value - a.value);
   
   // Calculate remaining percentage when showing against income
   let remainingSegment = null;
-  if (showAgainstIncome && monthlyIncome > 0 && monthlyIncome > total) {
+  if (showAgainstIncome && monthlyIncome > 0) {
     const savingsPercentage = ((monthlyIncome - total) / monthlyIncome) * 100;
     if (savingsPercentage > 0) {
       remainingSegment = {
@@ -61,11 +59,6 @@ export function ExpenseMonthStackedBar({
       };
       segments.push(remainingSegment);
     }
-  }
-  
-  // If there are no segments, don't render the component
-  if (segments.length === 0) {
-    return null;
   }
   
   return (
