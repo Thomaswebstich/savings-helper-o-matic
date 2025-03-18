@@ -49,13 +49,13 @@ export function useQuickReceiptUpload(
       receiptThumbnail: expense.receiptThumbnail
     };
 
-    // Add the expense directly without opening the form
-    onAddExpense(newExpense);
-    
-    // Remove from pending expenses
+    // Remove from pending expenses first, so we don't have UI jitter
     setPendingExpenses(prev => 
       prev.filter(item => item.id !== expense.id)
     );
+
+    // Add the expense directly without opening the form
+    onAddExpense(newExpense);
     
     // Show confirmation
     toast({

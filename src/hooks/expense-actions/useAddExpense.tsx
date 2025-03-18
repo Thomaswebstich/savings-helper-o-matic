@@ -15,6 +15,9 @@ export function useAddExpense({ expenses, setExpenses, onAfterAction }: UseAddEx
       // Find the category name if not already included
       const categoryName = newExpense.category || '';
       
+      // Update the UI first (optimistic update)
+      setExpenses(prevExpenses => [newExpense, ...prevExpenses]);
+      
       const { error } = await supabase.from('expenses').insert({
         description: newExpense.description,
         amount: newExpense.amount,
@@ -31,11 +34,10 @@ export function useAddExpense({ expenses, setExpenses, onAfterAction }: UseAddEx
 
       if (error) {
         console.error('Error adding expense:', error);
+        // Revert optimistic update on error
+        setExpenses(prevExpenses => prevExpenses.filter(e => e.id !== newExpense.id));
         throw error;
       }
-      
-      // Optimistically update UI
-      setExpenses([newExpense, ...expenses]);
       
       toast({
         title: "Success",
