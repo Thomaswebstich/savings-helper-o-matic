@@ -86,16 +86,12 @@ export function ExpenseImageUpload({ onExpenseRecognized, disabled = false }: Ex
       if (data?.data) {
         const { amount, currency, date, vendor, category, description } = data.data;
         
-        // Find the category ID based on the recognized category name
-        // This would need to be implemented with your actual categories
-        const categoryId = ''; // Will be filled by the user
-
-        // Create an expense form values object
+        // Create an expense form values object with all required fields
         const expenseValues: ExpenseFormValues = {
           description: description || vendor || 'Expense from receipt',
           amount: parseFloat(amount) || 0,
           date: date ? new Date(date) : new Date(),
-          category: categoryId, // The user will need to select this
+          category: '', // This will be selected by the user from the form
           isRecurring: false,
           currency: (currency as any) || 'THB',
         };
