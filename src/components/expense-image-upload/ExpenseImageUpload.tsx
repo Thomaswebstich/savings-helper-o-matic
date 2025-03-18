@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Category } from '@/lib/data';
@@ -30,16 +30,70 @@ export function ExpenseImageUpload({
 }: ExpenseImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(initialImage || null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropAreaRef = useRef<HTMLDivElement>(null);
   
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
+  useEffect(() => {
+    const dropArea = dropAreaRef.current;
+    if (!dropArea) return;
+    
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!disabled) {
+        setIsDragging(true);
+      }
+    };
+    
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!disabled) {
+        setIsDragging(true);
+      }
+    };
+    
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!e.relatedTarget || !dropArea.contains(e.relatedTarget as Node)) {
+        setIsDragging(false);
+      }
+    };
+    
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+      
+      if (disabled) return;
+      
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+      
+      handleFiles(files);
+    };
+    
+    dropArea.addEventListener('dragover', handleDragOver);
+    dropArea.addEventListener('dragenter', handleDragEnter);
+    dropArea.addEventListener('dragleave', handleDragLeave);
+    dropArea.addEventListener('drop', handleDrop);
+    
+    return () => {
+      dropArea.removeEventListener('dragover', handleDragOver);
+      dropArea.removeEventListener('dragenter', handleDragEnter);
+      dropArea.removeEventListener('dragleave', handleDragLeave);
+      dropArea.removeEventListener('drop', handleDrop);
+    };
+  }, [disabled]);
+  
+  const handleFiles = async (files: FileList) => {
     if (!files || files.length === 0) return;
     
     setIsUploading(true);
     
     try {
-      // Handle files one by one
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         await processFile(file);
@@ -49,18 +103,23 @@ export function ExpenseImageUpload({
     } finally {
       setIsUploading(false);
       
-      // Reset the file input so the same file can be selected again
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   };
   
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    handleFiles(files);
+  };
+  
   const processFile = async (file: File): Promise<void> => {
     try {
       const reader = new FileReader();
       
-      // Create a promise that resolves when the file is read
       const imageDataPromise = new Promise<string>((resolve, reject) => {
         reader.onload = (e) => {
           try {
@@ -78,22 +137,17 @@ export function ExpenseImageUpload({
         reader.readAsDataURL(file);
       });
       
-      // Get image data URL
       const imageDataUrl = await imageDataPromise;
       
-      // Only set the preview for the first file or in single file mode
       if (!multiUpload || !previewImage) {
         setPreviewImage(imageDataUrl);
       }
       
-      // Try to analyze the receipt with Supabase Edge Function
       try {
-        // Create a FormData object to send to our Supabase Edge Function
         const formData = new FormData();
         formData.append('image', file);
         formData.append('categories', JSON.stringify(categories));
         
-        // Call the analyze-expense-image function using Supabase client
         const { data: result, error } = await supabase.functions.invoke('analyze-expense-image', {
           body: formData,
         });
@@ -109,7 +163,6 @@ export function ExpenseImageUpload({
           throw new Error('No data returned from receipt analysis');
         }
         
-        // Map the recognized data to our form values
         const mappedData: ExpenseFormValues & { 
           receiptImage?: string; 
           receiptThumbnail?: string 
@@ -124,13 +177,10 @@ export function ExpenseImageUpload({
           receiptThumbnail: imageDataUrl
         };
         
-        // Pass the recognized data up to the parent component
         onExpenseRecognized(mappedData);
-        
       } catch (error) {
         console.error('Error analyzing receipt:', error);
         
-        // If analysis fails, fall back to random data like before
         const fallbackData: ExpenseFormValues & { 
           receiptImage?: string; 
           receiptThumbnail?: string 
@@ -145,48 +195,18 @@ export function ExpenseImageUpload({
           receiptThumbnail: imageDataUrl
         };
         
-        // Pass the fallback data up to the parent component
         onExpenseRecognized(fallbackData);
         
-        // Show toast for fallback mode
         toast({
           title: "AI Recognition Unavailable",
           description: "Using placeholder data. Please review before approving.",
           variant: "destructive"
         });
       }
-      
     } catch (error) {
       console.error('Error processing file:', error);
       throw error;
     }
-  };
-  
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (disabled) return;
-    
-    const files = event.dataTransfer.files;
-    if (!files || files.length === 0) return;
-    
-    setIsUploading(true);
-    
-    try {
-      // Process either all files or just the first one based on multiUpload flag
-      const filesToProcess = multiUpload ? files : [files[0]];
-      
-      Array.from(filesToProcess).forEach(async file => {
-        await processFile(file);
-      });
-    } catch (error) {
-      console.error('Error processing dropped files:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-  
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
   };
   
   const handleClick = () => {
@@ -209,14 +229,14 @@ export function ExpenseImageUpload({
       />
       
       <div
+        ref={dropAreaRef}
         className={cn(
           "border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer",
           disabled ? "opacity-50 cursor-not-allowed" : "hover:border-primary/50",
           compact ? "p-4" : "p-8",
-          isUploading && "opacity-70"
+          isUploading && "opacity-70",
+          isDragging && "border-primary bg-primary/5"
         )}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
         onClick={handleClick}
       >
         {previewImage && !multiUpload ? (
@@ -251,7 +271,9 @@ export function ExpenseImageUpload({
             <p className="text-sm text-muted-foreground text-center max-w-sm">
               {isUploading 
                 ? 'Processing your receipt...' 
-                : 'Drag & drop an image here, or click to select'}
+                : isDragging 
+                  ? 'Drop receipt here!' 
+                  : 'Drag & drop an image here, or click to select'}
             </p>
             
             {!compact && !isUploading && (
